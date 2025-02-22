@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/pcb2gcode",
             "args": [],
-            "stopAtEntry": true,
+            "stopAtEntry": false,
             "cwd": "/extrahd1/mydata/projects/basic_power_supply/basic_power_supply",
             "environment": [],
             "externalConsole": false,
