@@ -79,3 +79,5 @@ testing/gerbv_example/*/*.svg
 
 #gerberimporter_tests outputs
 /*.gbr.png
+
+/build/
