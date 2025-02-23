@@ -3,8 +3,24 @@
         {
             "name": "Linux",
             "includePath": [
+                "/usr/include/glib-2.0",
+                "/usr/lib/glib-2.0/include",
+                "/usr/include/gtk-2.0",
+                "/usr/include/gtk-3.0",
+                "/usr/include/gtk-3.0/gdk",
+                "/usr/include/gdk-pixbuf-2.0",
+                "/usr/include/atk-1.0",
+                "/usr/include/cairo",
+                "/usr/include/pango-1.0",
+                "/usr/include/harfbuzz",
                 "/usr/local/include/gerbv-2.10.1-dev",
+                "${workspaceFolder}/build"
             ],
+            "defines": [
+                "GIT_VERSION=\"`git describe --always --dirty`\"",
+                "GERBV_VERSION=\"`pkg-config --modversion libgerbv`\""
+            ],
+            "cppStandard": "c++17",
             "intelliSenseMode": "linux-gcc-x64"
         }
     ],
