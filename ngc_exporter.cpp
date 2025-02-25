@@ -29,6 +29,8 @@ using std::cerr;
 using std::flush;
 using std::ios_base;
 using std::left;
+using std::setw;
+using std::setprecision;
 #include <string>
 using std::to_string;
 using std::string;
@@ -288,8 +290,7 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
          << "G20 ( Units == INCHES. )\n\n";
     }
 
-    of << "G90 ( Absolute coordinates. )\n"
-       << "G00 S" << left << mill->speed << " ( RPM spindle speed. )\n";
+    of << "G90 ( Absolute coordinates. )\n";
 
     if (mill->explicit_tolerance) {
       of << "G64 P" << mill->tolerance * cfactor << " ( set maximum deviation from commanded toolpath )\n";
@@ -334,22 +335,33 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
          << "T" << (toolpaths_index + 1) << endl
          << "M5      (Spindle stop.)" << endl
          << "G04 P" << mill->spindown_time << " (Wait for spindle to stop)" << endl;
+          
+      of << "M291 P\"";
       if (cutter) {
-        of << "(MSG, Change tool bit to cutter diameter ";
+        of << "Change tool bit to cutter diameter ";
       } else if (isolator) {
-        of << "(MSG, Change tool bit to mill diameter ";
+        of << "Change tool bit to mill diameter ";
       } else {
         throw std::logic_error("Can't cast to Cutter nor Isolator.");
       }
       const auto& tool_diameter = all_toolpaths[toolpaths_index].first;
       if (bMetricoutput) {
-        of << (tool_diameter * 25.4) << "mm)" << endl;
+        of << (tool_diameter * 25.4) << " mm";
       } else {
-        of << tool_diameter << "in)" << endl;
+        of << tool_diameter << " in";
       }
+      of << "\" S2" << endl;
+      of << "M292      (Acknowledge blocking message.)\n";
+
+      of << "M557" << left << setprecision(2)
+         << " X0:" << board->get_width() * cfactor
+         << " Y0:" << board->get_height() * cfactor
+         << " S10"
+         << " ( Set probe area )\n";
+      of << "G29\n";
+
       of << (nom6?"":"M6      (Tool change.)\n")
-         << "M0      (Temporary machine stop.)" << endl
-         << "M3 ( Spindle on clockwise. )" << endl
+         << "M3 S" << left << setw(5) << mill->speed << " ( Spindle on clockwise. )" << endl
          << "G04 P" << mill->spinup_time << " (Wait for spindle to get up to speed)" << endl;
 
       tiling.header( of );
