@@ -316,14 +316,14 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
         of << "G00 Z" << driller->zchange * cfactor << " (Retract to tool change height)\n"
            << "T" << hole.first << "\n"
            << "M5      (Spindle stop.)\n"
-           << "G04 P" << driller->spindown_time << "\n";
-        of << "M291 P\"Change tool bit to drill size "
+           << "G04 P" << driller->spindown_time << "\n"
+           << "M291 P\"Change tool bit to drill size "
            << drill_to_string(bit)
-           << (bMetricOutput ? "mm" : "inch") << "\" S2\n";
-        of << "G0 X0 Y0\n"
-           << "G28 Z\n";
-        of << (nom6?"":"M6      (Tool change.)\n")
-           << "M3 S" << left << setw(5) << driller->speed << " (Spindle on clockwise.)\n"
+           << "\""
+           << " S2\n"
+           << "M292      (Acknowledge blocking message.)\n";
+        of << "G28 Z\n";
+        of << "M3 S" << left << setw(5) << driller->speed << " (Spindle on clockwise.)\n"
            << "G0 Z" << driller->zsafe * cfactor << "\n"
            << "G04 P" << driller->spinup_time << "\n\n";
 
@@ -636,12 +636,14 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
     of << "G00 Z" << target->zchange * cfactor << " (Retract to tool change height)\n"
        << "T" << (holes.size() > 0 ? (*holes.begin()).first : 0) << "\n"
        << "M5        (Spindle stop.)\n"
-       << "G04 P" << target->spindown_time << "\n";
-    of << "M291 P\"Change tool bit to cutter size "
+       << "G04 P" << target->spindown_time << "\n"
+       << "M291 P\"Change tool bit to drill size "
           << (bMetricOutput ? (target->tool_diameter * 25.4) : target->tool_diameter)
-          << (bMetricOutput ? " mm" : " inch") << "\" S2\n";
-    of << "G0 X0 Y0\n"
-       << "G28 Z\n";
+          << (bMetricOutput ? " mm" : " inch")
+          << "\""
+          << " S2\n"
+       << "M292        (Acknowledge blocking message.)\n";
+    of << "G28 Z\n";
     of << "M3 S" << left << setw(5) << target->speed << " (Spindle on clockwise.)\n"
        << "G04 P" << target->spinup_time << "\n"
        << "G00 Z" << target->zsafe * cfactor << "\n\n";
