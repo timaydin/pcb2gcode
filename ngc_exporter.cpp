@@ -351,7 +351,9 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
         of << tool_diameter << " in";
       }
       of << "\" S2" << endl;
-      of << "M292      (Acknowledge blocking message.)\n";
+
+      of << "G0 X0 Y0\n"
+         << "G28 Z\n";
 
       of << "M557" << left << setprecision(2)
          << " X0:" << board->get_width() * cfactor
