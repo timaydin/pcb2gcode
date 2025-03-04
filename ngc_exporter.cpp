@@ -355,12 +355,15 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
       of << "G0 X0 Y0\n"
          << "G28 Z\n";
 
-      of << "M557" << left << setprecision(2)
-         << " X0:" << board->get_width() * cfactor
-         << " Y0:" << board->get_height() * cfactor
-         << " S10"
-         << " ( Set probe area )\n";
-      of << "G29\n";
+      if (isolator) {
+        // don't need to map surface when cutting
+        of << "M557" << left << setprecision(2)
+          << " X0:" << board->get_width() * cfactor
+          << " Y0:" << board->get_height() * cfactor
+          << " S10"
+          << " ( Set probe area )\n";
+        of << "G29\n";
+      }
 
       of << (nom6?"":"M6      (Tool change.)\n")
          << "M3 S" << left << setw(5) << mill->speed << " ( Spindle on clockwise. )" << endl
