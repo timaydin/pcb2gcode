@@ -362,7 +362,7 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
           << " Y0:" << board->get_height() * cfactor
           << " S10"
           << " ( Set probe area )\n";
-        of << "G29\n";
+        of << "G29 S0\n";
       }
 
       of << (nom6?"":"M6      (Tool change.)\n")
