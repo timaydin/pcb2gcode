@@ -572,7 +572,7 @@ bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start
 
 // milldrill holes
 void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<string>& of_name,
-                                   shared_ptr<Cutter> target, bool zchange_absolute) {
+                                   shared_ptr<Cutter> target, bool nom6, bool zchange_absolute) {
     unsigned int badHoles = 0;
     stringstream zchange;
 
