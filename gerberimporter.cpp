@@ -486,6 +486,9 @@ multi_polygon_type_fp simplify_cutins(const ring_type_fp& ring) {
     return {};
   }
   auto new_mls = eulerian_paths::make_eulerian_paths({linestring_type_fp(ring.cbegin(), ring.cend())}, true, false);
+  if (new_mls.size() == 0) {
+    return {};
+  }
   if (new_mls.size() != 1 || new_mls[0].front() != new_mls[0].back()) {
     cerr << "Internal error in gerberimporter" << endl;
     cerr << bg::wkt(ring) << std::endl;

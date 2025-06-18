@@ -295,7 +295,8 @@ BOOST_DATA_TEST_CASE(gerberimporter_match_gerbv,
                            {"moire.gbr",                   0.01854},
                            {"thermal.gbr",                 0.01028},
                            {"unclosed_contour.gbr",        0.0002727},
-                           {"cutins.gbr",                  0}}),
+                           {"cutins.gbr",                  0},
+                           {"NanoV3.3-B_Cu.gbr",           0.05798}}),
                      gerber_file, expected_error_rate) {
   const char *skip_test = std::getenv("SKIP_GERBERIMPORTER_TESTS");
   if (skip_test != nullptr) {
