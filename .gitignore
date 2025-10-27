@@ -35,6 +35,7 @@ config.h.in~
 config.log
 config.status
 configure
+configure~
 libtool
 m4/compile
 m4/libtool.m4
