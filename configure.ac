@@ -18,7 +18,9 @@ AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
-AC_PROG_LIBTOOL
+
+# Initialize libtool
+LT_INIT
 
 # Check for C++11
 AX_CXX_COMPILE_STDCXX_14
@@ -72,7 +74,6 @@ AS_IF([test "x$HAVE_GEOS" = "xyes"],
       [AC_MSG_NOTICE([Found geos, is it geos++?])],
       [AC_MSG_NOTICE([Didn't find geos.])])
 
-AC_LANG_CPLUSPLUS
 if test "x$HAVE_GEOS" = "xyes"
 then
   saved_ldflags="${LDFLAGS}"
@@ -106,16 +107,9 @@ AC_ARG_VAR([pcb2gcode_LDFLAGS_EXTRA], [Additional flags when linking pcb2gcode])
 # GERBV_INTERPOLATION_LINEARx10 isn't available in older gerbv.h's, but
 # we want to use the new symbol
 CPPFLAGS+=" ${gerbv_CFLAGS}"
-AX_C_COMPILE_VALUE(GERBV_INTERPOLATION_LINEARx10,NEW_LINEARX10,[#include "gerbv.h"])
 
-# Ignore GTK 2.0 warnings for linux and macos and windows
-AC_SUBST([gerbv_CFLAGS_SYSTEM1], ['$(subst -I/home/runner/.local/include,-isystem /home/runner/.local/include,$(gerbv_CFLAGS))'])
-AC_SUBST([gerbv_CFLAGS_SYSTEM2], ['$(subst -I/usr/local/Cellar/gtk+/2.24.33/include,-I/usr/local/Cellar/gtk+/2.24.33/include,$(gerbv_CFLAGS_SYSTEM1))'])
-AC_SUBST([gerbv_CFLAGS_SYSTEM3], ['$(subst -I/usr/include/gtk-2.0,-isystem /usr/include/gtk-2.0,$(gerbv_CFLAGS_SYSTEM2))'])
-AC_SUBST([gerbv_CFLAGS_SYSTEM], ['$(subst -ID:/a/pcb2gcode/.local/include,-isystem D:/a/pcb2gcode/.local/include,$(gerbv_CFLAGS_SYSTEM3))'])
-
-# Checks for header files.
-AC_HEADER_STDC
+AC_SUBST([gerbv_CFLAGS_SYSTEM1], ['$(subst -I/usr/include/gtk-2.0,-isystem /usr/include/gtk-2.0,$(gerbv_CFLAGS))'])
+AC_SUBST([gerbv_CFLAGS_SYSTEM], ['$(subst -I/usr/local/include/gerbv-2.10.1-dev~180c67,-isystem /usr/local/include/gerbv-2.10.1-dev~180c67,$(gerbv_CFLAGS_SYSTEM1))'])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -123,5 +117,5 @@ AC_C_INLINE
 
 # Checks for library functions.
 
-AC_CONFIG_FILES([Makefile])
-AC_OUTPUT(man/Makefile)
+AC_CONFIG_FILES([Makefile man/Makefile])
+AC_OUTPUT
