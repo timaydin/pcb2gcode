@@ -13,8 +13,7 @@
                 "/usr/include/cairo",
                 "/usr/include/pango-1.0",
                 "/usr/include/harfbuzz",
-                "/usr/local/include/gerbv-2.10.1-dev",
-                "${workspaceFolder}/build"
+                "/usr/local/include/gerbv-2.10.1-dev~180c67"
             ],
             "defines": [
                 "GIT_VERSION=\"`git describe --always --dirty`\"",
