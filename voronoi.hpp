@@ -25,8 +25,11 @@
 #include <vector>
 #include <memory>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "geometry.hpp"
 #include "geometry_int.hpp"
+#pragma GCC diagnostic pop
 
 namespace boost { namespace polygon { namespace detail {
 

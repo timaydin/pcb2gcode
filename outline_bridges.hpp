@@ -24,8 +24,11 @@
 
 #include <memory>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "geometry.hpp"
 #include "mill.hpp"
+#pragma GCC diagnostic pop
 
 namespace outline_bridges {
 

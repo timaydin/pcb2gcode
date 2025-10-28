@@ -1,4 +1,7 @@
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "geometry.hpp"
+#pragma GCC diagnostic pop
 
 #include <string>
 using std::string;
