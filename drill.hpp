@@ -112,6 +112,7 @@ private:
       const boost::optional<Length>& min_diameter,
       const boost::optional<Length>& max_diameter);
   std::map<int, drillbit> optimize_bits();
+  bool is_alignment_hole(const drillbit& bit) const;
 
     void save_svg(
         const std::map<int, drillbit>& bits,
@@ -143,6 +144,9 @@ private:
     const boost::optional<Length> min_milldrill_diameter;
     const MillFeedDirection::MillFeedDirection mill_feed_direction;
     const std::vector<AvailableDrill> available_drills;
+    // Alignment hole parameters
+    const Length alignment_hole_diameter;
+    const boost::optional<Length> alignment_hole_depth;
     uniqueCodes ocodes;
     uniqueCodes globalVars;
     const Tiling::TileInfo tileInfo;

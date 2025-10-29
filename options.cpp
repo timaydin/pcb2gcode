@@ -229,7 +229,10 @@ options::options()
        ("nog91-1", po::value<bool>()->default_value(false)->implicit_value(true), "do not explicitly set G91.1 in drill headers")
        ("nog81", po::value<bool>()->default_value(false)->implicit_value(true), "replace G81 with G0+G1")
        ("nom6", po::value<bool>()->default_value(false)->implicit_value(true), "do not emit M6 on tool changes")
-       ("milldrill-output", po::value<string>()->default_value("milldrill.ngc"), "output file for milldrilling");
+       ("milldrill-output", po::value<string>()->default_value("milldrill.ngc"), "output file for milldrilling")
+       ("alignment-hole-diameter", po::value<Length>()->default_value(parse_unit<Length>("1.41421mm")), 
+        "diameter to detect as alignment holes (default: π = 1.41421mm)")
+       ("alignment-hole-depth", po::value<Length>(), "drilling depth for alignment holes (if not set, uses --zdrill)");
    cfg_options.add(drilling_options);
 
    po::options_description milling_options("Milling options, for milling traces into the PCB");
@@ -594,6 +597,21 @@ static void check_drilling_parameters(po::variables_map const& vm)
           if (!vm["drill-side"].defaulted()) {
             options::maybe_throw("You can't specify both drill-front and drill-side!", ERR_BOTHDRILLFRONTSIDE);
           }
+        }
+
+        // Check alignment hole parameters
+        if (vm.count("alignment-hole-depth")) {
+          const auto alignment_depth = vm["alignment-hole-depth"].as<Length>().asInch(unit);
+          if (alignment_depth > 0) {
+            options::maybe_throw("Error: Alignment hole depth (--alignment-hole-depth) is greater than zero!", ERR_NEGATIVEZWORK);
+          }
+          if (vm["zsafe"].as<Length>().asInch(unit) <= alignment_depth) {
+            options::maybe_throw("Error: The safety height --zsafe is lower than the alignment hole depth!", ERR_ZSAFELOWERZDRILL);
+          }
+        }
+
+        if (vm["alignment-hole-diameter"].as<Length>().asInch(unit) <= 0) {
+          options::maybe_throw("Error: Alignment hole diameter must be positive!", ERR_INVALIDPARAMETER);
         }
     }
 

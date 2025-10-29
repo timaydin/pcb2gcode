@@ -96,6 +96,9 @@ ExcellonProcessor::ExcellonProcessor(const boost::program_options::variables_map
     min_milldrill_diameter(options["min-milldrill-hole-diameter"].as<Length>()),
     mill_feed_direction(options["mill-feed-direction"].as<MillFeedDirection::MillFeedDirection>()),
     available_drills(flatten(options["drills-available"].as<std::vector<AvailableDrills>>())),
+    alignment_hole_diameter(options["alignment-hole-diameter"].as<Length>()),
+    alignment_hole_depth(options.count("alignment-hole-depth") ? 
+                        boost::make_optional(options["alignment-hole-depth"].as<Length>()) : boost::none),
     ocodes(1),
     globalVars(100),
     tileInfo(Tiling::generateTileInfo(options, max.y() - min.y(), max.x() - min.x())) {
@@ -324,12 +327,20 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
            << "G0 Z" << driller->zsafe * cfactor << "\n"
            << "G04 P" << driller->spinup_time << "\n\n";
 
+        // Determine drill depth - use alignment hole depth if this is an alignment hole
+        double drill_depth = driller->zwork;
+        if (is_alignment_hole(bit)) {
+            drill_depth = alignment_hole_depth ? alignment_hole_depth->asInch(inputFactor) : driller->zwork;
+            of << "( Alignment hole detected - drilling to depth " << drill_depth * cfactor 
+               << (bMetricOutput ? "mm" : "inch") << " )\n";
+        }
+
         if( nog81 )
             of << "G1 F" << driller->feed * cfactor << '\n';
         else
         {
             of << "G81 R" << driller->zsafe * cfactor << " Z"
-               << driller->zwork * cfactor << " F" << driller->feed * cfactor << " ";
+               << drill_depth * cfactor << " F" << driller->feed * cfactor << " ";
         }
 
         double drill_diameter = bit.unit == "mm" ? bit.diameter / 25.4 : bit.diameter;
@@ -350,7 +361,7 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
                         {
                             of << "G0 X" << ( ( get_xvalue(x) - xoffsetTot ) * cfactor)
                                <<   " Y" << ( ( get_yvalue(y) - yoffsetTot ) * cfactor) << "\n";
-                            of << "G1 Z" << driller->zwork * cfactor << '\n';
+                            of << "G1 Z" << drill_depth * cfactor << '\n';
                             of << "G1 Z" << driller->zsafe * cfactor << '\n';
                         }
                         else
@@ -852,6 +863,19 @@ vector<pair<int, multi_linestring_type_fp>> ExcellonProcessor::optimize_holes(
 
 
   return sorted_holes;
+}
+
+/******************************************************************************/
+/*
+ * Check if a drill bit matches the alignment hole diameter (π)
+ */
+/******************************************************************************/
+bool ExcellonProcessor::is_alignment_hole(const drillbit& bit) const {
+    const double bit_diameter = bit.as_length().asInch(inputFactor);
+    const double alignment_diameter = alignment_hole_diameter.asInch(inputFactor);
+    const double tolerance = 0.0001; // Allow small floating point differences
+    
+    return std::abs(bit_diameter - alignment_diameter) < tolerance;
 }
 
 /******************************************************************************/
