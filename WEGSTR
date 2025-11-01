@@ -1,6 +1,31 @@
-In KiCad, set the drill file origin to the bottom left of the PCB. Also select "use drill/place file origin" during fabrication output creation.
+In KiCad, set the drill file origin to the bottom left of the PCB. Also select
+"use drill/place file origin" during fabrication output creation.
 
-In pcb2gcode, use a zwork = -0.2 and for a 45 degree spiral V cutter, use mill-diameters = 0.17
+In Kicad, configure the alignment hole to be Through Hole and assign it to the net
+of the copper it is placed on. For example, GND. That way, there won't be any
+extra paths to provide clearance around them.
 
-When moving the spindle to the starting position (home), move it to the bottom left of the PCB to match what KiCad is displaying for the drill file origin.
+In Kocad, set the board edge clearance to zer0. This will prevent extra paths around
+the board.
 
+In pcb2gcode, use a zwork = -0.2 and for a 45 degree spiral V cutter, use
+mill-diameters = 0.17
+
+When moving the spindle to the starting position (home), move it to the bottom
+left of the PCB to match what KiCad is displaying for the drill file origin.
+
+Give a unique diameter for the alignment hole (for example, 3.01 mm for a 3 mm hole).
+ Specify this inside the millproject file. Also specify the hole depth
+
+alignment-hole-diameter = 3.01
+alignment-hole-depth = -5.5
+
+Make sure the zero-start flag is set in millproject. This is important to guarantee
+that the top and bottom layers match up.
+
+zero-start = 1
+
+First do "back" isolation milling, then do "milldrill" which also includes the alignment holes.
+Then turn the board around and do "front" isolation milling. And finally do "drill". This
+sequence is important, because each isolation milling is also doing surface mapping, and
+for this to work, there must be no holes drilled yet.
