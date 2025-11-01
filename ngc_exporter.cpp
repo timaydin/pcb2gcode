@@ -104,9 +104,11 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
             if (options["mirror-yaxis"].as<bool>()) {
                 yoffset = -yoffset + tileInfo.boardHeight*(tileInfo.tileY-1);
                 yoffset -= 2 * options["mirror-axis"].as<Length>().asInch(bMetricinput ? 1.0/25.4 : 1);
+                yoffset -= board->get_height();
             } else {
                 xoffset = -xoffset + tileInfo.boardWidth*(tileInfo.tileX-1);
                 xoffset -= 2 * options["mirror-axis"].as<Length>().asInch(bMetricinput ? 1.0/25.4 : 1);
+                xoffset -= board->get_width();
             }
         }
 

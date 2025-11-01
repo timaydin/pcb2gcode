@@ -327,20 +327,12 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
            << "G0 Z" << driller->zsafe * cfactor << "\n"
            << "G04 P" << driller->spinup_time << "\n\n";
 
-        // Determine drill depth - use alignment hole depth if this is an alignment hole
-        double drill_depth = driller->zwork;
-        if (is_alignment_hole(bit)) {
-            drill_depth = alignment_hole_depth ? alignment_hole_depth->asInch(inputFactor) : driller->zwork;
-            of << "( Alignment hole detected - drilling to depth " << drill_depth * cfactor 
-               << (bMetricOutput ? "mm" : "inch") << " )\n";
-        }
-
         if( nog81 )
             of << "G1 F" << driller->feed * cfactor << '\n';
         else
         {
             of << "G81 R" << driller->zsafe * cfactor << " Z"
-               << drill_depth * cfactor << " F" << driller->feed * cfactor << " ";
+              << driller->zwork * cfactor << " F" << driller->feed * cfactor << " ";
         }
 
         double drill_diameter = bit.unit == "mm" ? bit.diameter / 25.4 : bit.diameter;
@@ -361,7 +353,7 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
                         {
                             of << "G0 X" << ( ( get_xvalue(x) - xoffsetTot ) * cfactor)
                                <<   " Y" << ( ( get_yvalue(y) - yoffsetTot ) * cfactor) << "\n";
-                            of << "G1 Z" << drill_depth * cfactor << '\n';
+                            of << "G1 Z" << driller->zwork * cfactor << '\n';
                             of << "G1 Z" << driller->zsafe * cfactor << '\n';
                         }
                         else
@@ -664,6 +656,20 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
             for (const auto& hole : holes) {
                 const auto& bit = bits.at(hole.first);
                 double diameter = bit.unit == "mm" ? bit.diameter / 25.4 : bit.diameter;
+                // If this hole size matches the alignment-hole diameter, optionally use a deeper z.
+                std::shared_ptr<Cutter> use_target = target;
+                if (is_alignment_hole(bit)) {
+                  double desired_depth = alignment_hole_depth ? alignment_hole_depth->asInch(inputFactor)
+                                        : target->zwork;
+                  if (desired_depth != target->zwork) {
+                    auto tmp = std::make_shared<Cutter>(*target);
+                    tmp->zwork = desired_depth;
+                    use_target = tmp;
+                    of << "( Alignment milldrill hole detected - depth "
+                      << desired_depth * cfactor << (bMetricOutput ? "mm" : "inch")
+                      << " )\n";
+                  }
+                }
                 for (const auto& line : hole.second) {
                     const auto& start_x = line.front().x();
                     const auto& start_y = line.front().y();
@@ -672,7 +678,7 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
                     if (!millhole(of,
                                   get_xvalue(start_x) - xoffsetTot, get_yvalue(start_y) - yoffsetTot,
                                   get_xvalue(end_x  ) - xoffsetTot, get_yvalue(  end_y) - yoffsetTot,
-                                  target, diameter)) {
+                  use_target, diameter)) {
                         ++badHoles;
                     }
                 }
