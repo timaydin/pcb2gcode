@@ -1,0 +1,6 @@
+In KiCad, set the drill file origin to the bottom left of the PCB. Also select "use drill/place file origin" during fabrication output creation.
+
+In pcb2gcode, use a zwork = -0.2 and for a 45 degree spiral V cutter, use mill-diameters = 0.17
+
+When moving the spindle to the starting position (home), move it to the bottom left of the PCB to match what KiCad is displaying for the drill file origin.
+
