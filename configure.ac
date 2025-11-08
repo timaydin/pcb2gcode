@@ -89,10 +89,23 @@ then
   saved_cppflags="${CPPFLAGS}"
   LDFLAGS="${LDFLAGS} ${GEOS_CC_LIBS}"
   CPPFLAGS="${CPPFLAGS} ${GEOS_CFLAGS}"
-  AC_LINK_IFELSE(
-    [AC_LANG_PROGRAM([#include <geos/geom/Geometry.h>], [geos::geom::geosversion])],
+  dnl ------------------------------------------------------------------
+  dnl Re-run GEOS detection explicitly in C++ mode. The earlier test
+  dnl was compiling a C++ header with the C compiler which fails when
+  dnl <cmath> (and other std C++ headers) are not searched.
+  dnl ------------------------------------------------------------------
+  AC_LANG_PUSH([C++])
+  dnl Compile-only probe: ensure C++ headers are usable under provided CFLAGS
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM([
+        #include <geos/geom/GeometryFactory.h>
+        namespace gg = geos::geom;
+      ],[
+        const gg::GeometryFactory* p = nullptr; (void)p; return 0;
+      ])],
     [HAVE_GEOS="yes"],
-    [HAVE_GEOS="no"] [GEOS_CC_LIBS=""] [GEOS_CFLAGS=""])
+    [HAVE_GEOS="no"; GEOS_CC_LIBS=""; GEOS_CFLAGS=""])
+  AC_LANG_POP([C++])
   LDFLAGS="${saved_ldflags}"
   CPPFLAGS="${saved_cppflags}"
 fi
