@@ -11,6 +11,8 @@ the board.
 In pcb2gcode, use a zwork = -0.2 and for a 45 degree spiral V cutter, use
 mill-diameters = 0.17
 
+Configure the CNC to not reduce stepper currents during idle (M906)
+
 When moving the spindle to the starting position (home), move it to the bottom
 left of the PCB to match what KiCad is displaying for the drill file origin.
 
