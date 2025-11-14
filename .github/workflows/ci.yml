@@ -17,39 +17,32 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu, macos, windows]
-        boost: ['1_66', 'latest']
-        geos: ['3.13.1', 'main', 'none'] # TODO: Put 3.9.0 geos back again.
-        compiler: ['g++-10'] # TODO: Put g++ and clang++ back again.
+        boost: ['latest'] # 1_66 disabled because of discrepancies in wide_oval
+        geos: ['3.13.1', 'latest', 'none'] # TODO: Put 3.9.0 geos back again.
+        compiler: ['g++-10', 'g++'] # TODO: Put clang++ back again.
         exclude:
           - os: macos # Temporarily disable until fixed
-          - os: windows # Temporarily disable until fixed
           - os: macos
             boost: '1_66'
-          - os: ubuntu
-            boost: 'latest'
           - os: macos
-            compiler: 'g++-10'
-          - os: windows
             compiler: 'g++-10'
           - os: windows
             compiler: 'clang++'
           - os: windows
+            compiler: 'g++-10'
+          - os: windows
             boost: '1_66'
         include:
           - os: ubuntu
-            boost: 1_66
-            compiler: g++-10
-            geos: 'main'
-            code_coverage: "--enable-code-coverage"
-          #- os: windows
-          #  shell: msys2 {0}
-          #  local_install_path: '/d/a/pcb2gcode/.local'
-          - os: ubuntu
             shell: '/usr/bin/bash -l -e -o pipefail {0}'
             local_install_path: '$HOME/.local'
-          #- os: macos
-          #  shell: '/bin/bash -l -e -o pipefail {0}'
-          #  local_install_path: '$HOME/.local'
+          - os: windows
+            shell: msys2 {0}
+            local_install_path: '/d/a/pcb2gcode/.local'
+          - compiler: 'g++-10'
+            werror_flag: '-Werror'
+          - compiler: 'g++'
+            werror_flag: ''
     runs-on: ${{ matrix.os }}-latest
     defaults:
       run:
@@ -61,7 +54,19 @@ jobs:
       with:
         msystem: MINGW64
         update: true
-        install: mingw-w64-x86_64-gtkmm git base-devel bash mingw-w64-x86_64-gcc mingw-w64-x86_64-boost mingw-w64-x86_64-cairo mingw-w64-x86_64-cmake autoconf automake libtool
+        install: >-
+          autoconf
+          automake
+          base-devel
+          bash
+          gettext-devel
+          git
+          libtool
+          mingw-w64-x86_64-boost
+          mingw-w64-x86_64-cairo
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-gtkmm
     - name: Checkout pcb2gcode source
       uses: actions/checkout@v3
     - name: Setup paths and env
@@ -84,7 +89,7 @@ jobs:
       if: matrix.os == 'ubuntu'
       run: |
         sudo apt-get update
-        sudo apt-get install libgtkmm-2.4-dev moreutils autopoint libc6-dbg librsvg2-dev
+        sudo apt-get install libgtkmm-2.4-dev moreutils autopoint libc6-dbg librsvg2-dev parallel
         echo "export NUM_CPUS='$((`nproc --all` * 4))'" >> ~/.bash_profile
     - name: Set clang as default compiler
       if: matrix.compiler == 'clang++'
@@ -92,11 +97,15 @@ jobs:
         echo "export CC='`which clang`'" >> ~/.bash_profile
         echo "export CXX='`which clang++`'" >> ~/.bash_profile
     - name: g++-10 specific setup
-      if: matrix.compiler == 'g++-10'
+      if: matrix.compiler == 'g++-10' && matrix.os == 'ubuntu'
       run: |
         sudo apt-get install g++-10
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10
         sudo update-alternatives --set gcc /usr/bin/gcc-10
+    - name: g++ specific setup
+      if: matrix.compiler == 'g++' && matrix.os == 'ubuntu'
+      run: |
+        sudo apt-get install g++
     - name: Macos specific setup
       if: matrix.os == 'macos'
       run: |
@@ -117,9 +126,21 @@ jobs:
         echo "export PATH='/usr/local/opt/gettext/bin:$PATH'" >> ~/.bash_profile
         rm /usr/local/include/boost
     - name: Macos geos
-      if: matrix.geos != 'none' && matrix.os == 'macos'
+      if: matrix.geos == 'latest' && matrix.os == 'macos'
       run:
         brew install geos
+    - name: Ubuntu geos
+      if: matrix.geos == 'latest' && matrix.os == 'ubuntu'
+      run:
+        sudo apt-get install -y libgeos++-dev
+    - name: Ubuntu boost
+      if: matrix.boost == 'latest' && matrix.os == 'ubuntu'
+      run:
+        sudo apt-get install -y libboost-program-options-dev
+    - name: Windows geos
+      if: matrix.geos == 'latest' && matrix.os == 'windows'
+      run:
+        pacman -S --noconfirm mingw-w64-x86_64-geos
     - name: Display information about build environment
       run: |
         pwd
@@ -149,7 +170,7 @@ jobs:
     - name: Default don't update cache
       run: echo "UPDATE_CACHE=false" >> $GITHUB_ENV
     - name: Build and install boost # TODO: Change the prefix back to ${LOCAL_INSTALL_PATH}
-      if: matrix.os == 'ubuntu'
+      if: matrix.os == 'ubuntu' && matrix.boost != 'latest'
       env:
         BOOST: ${{ matrix.boost }}_0
       run: |
@@ -169,7 +190,7 @@ jobs:
         fi
         echo "export BOOST_ROOT='$(echo /tmp/boost)'" >> ~/.bash_profile
     - name: Build and install geos
-      if: matrix.os != 'macos' && matrix.geos != 'none'
+      if: matrix.os != 'macos' && matrix.geos != 'none' && matrix.geos != 'latest'
       run: |
         if ! test -d "${LOCAL_INSTALL_PATH}/include/geos" || ! test -f ${LOCAL_INSTALL_PATH}/bin/geos.version || ! grep -qx "$(git ls-remote https://github.com/libgeos/geos.git ${{ matrix.geos }} )" ${LOCAL_INSTALL_PATH}/bin/geos.version; then
           git ls-remote https://github.com/libgeos/geos.git ${{ matrix.geos }} > ${LOCAL_INSTALL_PATH}/bin/geos.version
@@ -229,6 +250,7 @@ jobs:
           popd
         fi
     - name: Install parallel
+      if: matrix.os != 'windows'
       run: |
         if ! parallel --version; then
           echo "UPDATE_CACHE=true" >> $GITHUB_ENV
@@ -254,7 +276,7 @@ jobs:
       run: autoreconf -fvi
     - name: Configure pcb2gcode
       run: >-
-        ./configure pcb2gcode_CPPFLAGS_EXTRA=-Werror
+        ./configure pcb2gcode_CPPFLAGS_EXTRA=${{ matrix.werror_flag }}
         --disable-dependency-tracking
         --disable-silent-rules
         --enable-static-boost
@@ -269,7 +291,7 @@ jobs:
     - name: Display pcb2gcode version
       run: ./pcb2gcode --version
     - name: Run examples
-      if: '! matrix.code_coverage'
+      if: matrix.os != 'windows' && ! matrix.code_coverage
       run: |
         pushd testing/gerbv_example
         ls | parallel -k -j ${NUM_CPUS} --halt soon,fail=1 '
@@ -287,6 +309,16 @@ jobs:
             echo "::endgroup::";
           } 2>&1'
         popd
+    - name: Run examples
+      if: matrix.os == 'windows' && ! matrix.code_coverage
+      run: |
+        for d in testing/gerbv_example/*; do
+            if [ -d "$d" ]; then
+                pushd "$d"
+                time ../../../pcb2gcode || exit $?
+                popd
+            fi
+        done
     - name: Reset coverage
       if: matrix.code_coverage
       continue-on-error: true
@@ -349,6 +381,8 @@ jobs:
         chmod a+x pcb2gcode-$(./pcb2gcode --version | head -1)/pcb2gcode.sh
         tar cvf pcb2gcode-${{ steps.sanitize-key.outputs.key }}.tar pcb2gcode-$(./pcb2gcode --version | head -1)
         gzip pcb2gcode-${{ steps.sanitize-key.outputs.key }}.tar
+      env:
+        GEOS: ${{ matrix.geos }}
     - name: Prepare build for upload for Windows
       if: matrix.os == 'windows'
       run: |
@@ -358,24 +392,29 @@ jobs:
         mkdir .libs
         pushd .libs
         cp ../../.libs/pcb2gcode.exe .
-        cp ../../../.local/bin/libgerbv-1.dll .
-        if [[ ${GEOS} != 'none' ]]; then
-          cp ../../../.local/bin/libgeos-${GEOS}.dll .
+        cp ${LOCAL_INSTALL_PATH}/bin/libgerbv-1.dll .
+        if [[ ${GEOS} != 'none' && ${GEOS} != 'latest' ]]; then
+          cp ${LOCAL_INSTALL_PATH}/bin/libgeos*.dll .
         fi
+        if [[ ${GEOS} == 'latest' ]]; then
+          cp /mingw64/bin/libgeos*.dll .
+        fi
+        cp /mingw64/bin/libLerc.dll .
         cp /mingw64/bin/libboost_program_options-mt.dll .
         cp /mingw64/bin/libbrotlicommon.dll .
         cp /mingw64/bin/libbrotlidec.dll .
         cp /mingw64/bin/libbz2-1.dll .
         cp /mingw64/bin/libcairo-2.dll .
         cp /mingw64/bin/libdatrie-1.dll .
+        cp /mingw64/bin/libdeflate.dll .
         cp /mingw64/bin/libexpat-1.dll .
-        cp /mingw64/bin/libffi-7.dll .
+        cp /mingw64/bin/libffi-8.dll .
         cp /mingw64/bin/libfontconfig-1.dll .
         cp /mingw64/bin/libfreetype-6.dll .
         cp /mingw64/bin/libfribidi-0.dll .
         cp /mingw64/bin/libgcc_s_seh-1.dll .
-        cp /mingw64/bin/libgdk_pixbuf-2.0-0.dll .
         cp /mingw64/bin/libgdk-win32-2.0-0.dll .
+        cp /mingw64/bin/libgdk_pixbuf-2.0-0.dll .
         cp /mingw64/bin/libgio-2.0-0.dll .
         cp /mingw64/bin/libglib-2.0-0.dll .
         cp /mingw64/bin/libgmodule-2.0-0.dll .
@@ -384,16 +423,23 @@ jobs:
         cp /mingw64/bin/libharfbuzz-0.dll .
         cp /mingw64/bin/libiconv-2.dll .
         cp /mingw64/bin/libintl-8.dll .
+        cp /mingw64/bin/libjbig-0.dll .
+        cp /mingw64/bin/libjpeg-8.dll .
+        cp /mingw64/bin/liblzma-5.dll .
         cp /mingw64/bin/libpango-1.0-0.dll .
         cp /mingw64/bin/libpangocairo-1.0-0.dll .
         cp /mingw64/bin/libpangoft2-1.0-0.dll .
         cp /mingw64/bin/libpangowin32-1.0-0.dll .
-        cp /mingw64/bin/libpcre-1.dll .
+        cp /mingw64/bin/libpcre2-8-0.dll .
         cp /mingw64/bin/libpixman-1-0.dll .
         cp /mingw64/bin/libpng16-16.dll .
+        cp /mingw64/bin/libsharpyuv-0.dll .
         cp /mingw64/bin/libstdc++-6.dll .
         cp /mingw64/bin/libthai-0.dll .
+        cp /mingw64/bin/libtiff-6.dll .
+        cp /mingw64/bin/libwebp-7.dll .
         cp /mingw64/bin/libwinpthread-1.dll .
+        cp /mingw64/bin/libzstd.dll .
         cp /mingw64/bin/zlib1.dll .
         popd
         popd
