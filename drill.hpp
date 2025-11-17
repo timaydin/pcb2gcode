@@ -28,10 +28,7 @@
 #include <list>
 #include <vector>
 #include <memory>
-
-extern "C" {
 #include <gerbv.h>
-}
 
 #include "geometry.hpp"
 
