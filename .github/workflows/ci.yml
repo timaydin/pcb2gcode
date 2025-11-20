@@ -34,6 +34,11 @@ jobs:
             boost: '1_66'
         include:
           - os: ubuntu
+            boost: latest
+            compiler: g++
+            geos: latest
+            code_coverage: "--enable-code-coverage"
+          - os: ubuntu
             shell: '/usr/bin/bash -l -e -o pipefail {0}'
             local_install_path: '$HOME/.local'
           - os: windows
@@ -208,7 +213,7 @@ jobs:
           popd
         fi
     - name: coverage specific setup
-      if: matrix.code_coverage
+      if: matrix.os == 'ubuntu' && matrix.code_coverage
       run: |
         sudo apt-get install libperlio-gzip-perl libjson-perl libcapture-tiny-perl
         pushd ~
