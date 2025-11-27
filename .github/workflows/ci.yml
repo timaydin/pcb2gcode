@@ -397,9 +397,6 @@ jobs:
         mkdir pcb2gcode-${PCB2GCODE_VERSION}
         pushd pcb2gcode-${PCB2GCODE_VERSION}
         cp ../pcb2gcode.exe .
-        mkdir .libs
-        pushd .libs
-        cp ../../.libs/pcb2gcode.exe .
         cp ${LOCAL_INSTALL_PATH}/bin/libgerbv-1.dll .
         if [[ ${GEOS} != 'none' && ${GEOS} != 'latest' ]]; then
           cp ${LOCAL_INSTALL_PATH}/bin/libgeos*.dll .
@@ -449,7 +446,6 @@ jobs:
         cp /mingw64/bin/libwinpthread-1.dll .
         cp /mingw64/bin/libzstd.dll .
         cp /mingw64/bin/zlib1.dll .
-        popd
         popd
         zip -r pcb2gcode-${{ steps.sanitize-key.outputs.key }}-${PCB2GCODE_VERSION}.zip pcb2gcode-${PCB2GCODE_VERSION}
       env:
