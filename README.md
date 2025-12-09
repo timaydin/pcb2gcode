@@ -112,7 +112,7 @@ The following commands are for the x86_64 binary, if you want the i686 binary re
 Close and reopen the shell
 
     $ pacman -Su  # This may also close the shell; if so, reopen it.
-    $ pacman --needed -S base-devel git mingw-w64-x86_64-gcc mingw-w64-x86_64-boost mingw-w64-x86_64-gtkmm libtool mingw-w64-x86_64-autotool
+    $ pacman --needed -S base-devel git mingw-w64-x86_64-gcc mingw-w64-x86_64-boost mingw-w64-x86_64-gtkmm libtool mingw-w64-x86_64-autotools
 
 Now let's download, build and install gerbv:
 
