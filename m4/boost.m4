@@ -155,7 +155,7 @@ m4_pattern_allow([^BOOST_VERSION$])dnl
     # If the user provided a value to --with-boost, use it and only it.
     case $with_boost in #(
       ''|yes) set x '' /opt/local/include /usr/local/include /opt/include \
-                 /usr/include C:/Boost/include;; #(
+                 /usr/include C:/Boost/include /mingw64/include;; #(
       *)      set x "$with_boost/include" "$with_boost";;
     esac
     shift
