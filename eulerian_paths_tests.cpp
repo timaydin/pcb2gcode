@@ -15,6 +15,29 @@ using namespace eulerian_paths;
 
 BOOST_AUTO_TEST_SUITE(eulerian_paths_tests)
 
+template <typename linestring_type>
+static void print_euler_paths(vector<pair<linestring_type, bool>> euler_paths) {
+  for (const auto& euler_path : euler_paths) {
+    for (const auto& point : euler_path.first) {
+      std::cout << point << " ";
+    }
+    std::cout << (euler_path.second ? "reversible" : "not-reversible") << std::endl;
+  }
+}
+
+template <typename point_type, typename linestring_type>
+void run_test(vector<pair<linestring_type, bool>> mls, size_t expected_size) {
+  vector<pair<linestring_type, bool>> result =
+    get_eulerian_paths<point_type, linestring_type>(mls);
+  std::string test_name = boost::unit_test::framework::current_test_case().full_name();
+  std::cout << "Test " << test_name << " result:" << std::endl;
+  print_euler_paths(result);
+  std::cout << std::endl;
+  BOOST_CHECK(check_eulerian_paths<point_type>(mls, result));
+  BOOST_CHECK_EQUAL(result.size(), expected_size);
+}
+
+
 BOOST_AUTO_TEST_CASE(do_nothing_points) {
   linestring_type ls;
   ls.push_back(point_type(1,1));
@@ -22,23 +45,7 @@ BOOST_AUTO_TEST_CASE(do_nothing_points) {
   ls.push_back(point_type(3,4));
   vector<pair<linestring_type, bool>> mls;
   mls.push_back(make_pair(ls, true));
-  vector<pair<linestring_type, bool>> result =
-      get_eulerian_paths<point_type, linestring_type>(mls);
-  BOOST_CHECK_EQUAL(result.size(), 1UL);
-}
-
-static int print_euler_paths(vector<pair<vector<int>, bool>> euler_paths) {
-  int edges_visited = 0;
-  for (size_t i = 0; i < euler_paths.size(); i++) {
-    edges_visited += euler_paths[i].first.size()-1;
-    for (size_t j = 0; j < euler_paths[i].first.size(); j++) {
-      printf("%d ", euler_paths[i].first[j]);
-    }
-    printf(", %s", euler_paths[i].second ? "reversible" : "not-reversible");
-    printf("\n");
-  }
-  printf("\n");
-  return edges_visited;
+  run_test<point_type>(mls, 1);
 }
 
 // 3x3 grid connected like a window pane:
@@ -62,9 +69,7 @@ BOOST_AUTO_TEST_CASE(window_pane) {
       make_pair(vector<int>{3,6}, true),
       make_pair(vector<int>{6,9}, true),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 12);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 2UL);
+  run_test<int>(euler_paths, 2);
 }
 
 // 3x3 grid connected like a window pane, but corners are longer paths:
@@ -84,9 +89,7 @@ BOOST_AUTO_TEST_CASE(window_pane_with_longer_corners) {
       make_pair(vector<int>{4,1,2}, true),
       make_pair(vector<int>{2,3,6}, true),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 12);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 2UL);
+  run_test<int>(euler_paths, 2);
 }
 
 // Bridge
@@ -105,9 +108,7 @@ BOOST_AUTO_TEST_CASE(bridge) {
       make_pair(vector<int>{1,7}, true),
       make_pair(vector<int>{6,8}, true),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 9);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 1UL);
+  run_test<int>(euler_paths, 1);
 }
 
 // Disjoint Loops and two degenerate paths
@@ -128,9 +129,7 @@ BOOST_AUTO_TEST_CASE(disjoint_loops) {
       make_pair(vector<int>{}, true),
       make_pair(vector<int>{12}, true),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 9);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 3UL);
+  run_test<int>(euler_paths, 3);
 }
 
 // bidi and directional together
@@ -145,9 +144,7 @@ BOOST_AUTO_TEST_CASE(mixed1) {
       make_pair(vector<int>{2,4}, true),
       make_pair(vector<int>{3,4}, true),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 4);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 2UL);
+  run_test<int>(euler_paths, 2);
 }
 
 // bidi and directional together
@@ -162,9 +159,7 @@ BOOST_AUTO_TEST_CASE(mixed2) {
       make_pair(vector<int>{2,4}, true),
       make_pair(vector<int>{3,4}, true),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 4);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 1UL);
+  run_test<int>(euler_paths, 1);
 }
 
 // 3x3 grid bidi
@@ -190,9 +185,7 @@ BOOST_AUTO_TEST_CASE(mixed3) {
       make_pair(vector<int>{7,8}, true),
       make_pair(vector<int>{8,9}, true),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 12);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 4UL);
+  run_test<int>(euler_paths, 4);
 }
 
 // At least one of the paths must be turned around.
@@ -201,9 +194,7 @@ BOOST_AUTO_TEST_CASE(start_second) {
       make_pair(vector<int>{0,1}, true),
       make_pair(vector<int>{0,2}, true),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 2);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 1UL);
+  run_test<int>(euler_paths, 1);
 }
 
 // Directional paths with a loop.
@@ -212,9 +203,7 @@ BOOST_AUTO_TEST_CASE(directional_loop) {
       make_pair(vector<int>{0, 0}, false),
       make_pair(vector<int>{1, 0}, false),
     });
-  int edges_visited = print_euler_paths(euler_paths);
-  BOOST_CHECK_EQUAL(edges_visited, 2);
-  BOOST_CHECK_EQUAL(euler_paths.size(), 1UL);
+  run_test<int>(euler_paths, 1);
 }
 
 // Prefer straight lines.

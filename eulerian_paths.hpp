@@ -336,14 +336,58 @@ class eulerian_paths {
   // Only the ones that have at least one potential edge leading out.
   std::set<point_t> all_start_vertices;
 }; //class eulerian_paths
+template <typename point_t, typename linestring_t>
+bool check_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& before,
+                          const std::vector<std::pair<linestring_t, bool>>& after) {
+  std::unordered_multiset<std::pair<std::pair<point_t, point_t>, bool>> all_edges;
+  for (auto const& linestring : before) {
+    auto const reversible = linestring.second;
+    auto const path = linestring.first;
+    if (path.size() < 2) {
+      continue;
+    }
+    for (size_t i = 0; i < path.size()-1; i++) {
+      auto const p0 = path[i];
+      auto const p1 = path[i+1];
+      auto const edge = std::make_pair(p0, p1);
+      all_edges.insert({edge, reversible});
+    }
+  }
+  for (auto const& linestring : after) {
+    auto const path = linestring.first;
+    for (size_t i = 0; i < path.size()-1; i++) {
+      auto const p0 = path[i];
+      auto const p1 = path[i+1];
+      auto const edge = std::make_pair(p0, p1);
+      auto const reversed_edge = std::make_pair(p1, p0);
+      // If the edge is in all_edges twice, reversible and not, we prefer to delete the non-reversible one first because the other one can be more
+      // flexible for searching later.
+      if (all_edges.find({edge, false}) != all_edges.end()) {
+        all_edges.erase(all_edges.find({edge, false}));
+      } else if (all_edges.find({edge, true}) != all_edges.end()) {
+        all_edges.erase(all_edges.find({edge, true}));
+      } else if (all_edges.find({reversed_edge, true}) != all_edges.end()) {
+        all_edges.erase(all_edges.find({reversed_edge, true}));
+      } else {
+        return false;
+      }
+    }
+  }
+  if (all_edges.size() > 0) {
+    return false;
+  }
+  return true;
+}
 
 // Returns a minimal number of toolpaths that include all the milling in the
 // oroginal toolpaths.  Each path is traversed once.  Each path has a bool
 // indicating if the path is reversible.
 template <typename point_t, typename linestring_t>
 std::vector<std::pair<linestring_t, bool>> get_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& paths) {
-  return eulerian_paths<point_t, linestring_t>(
+  auto const ret = eulerian_paths<point_t, linestring_t>(
       paths).get();
+  assert((check_eulerian_paths<point_t, linestring_t>(paths, ret)));
+  return ret;
 }
 
 multi_linestring_type_fp make_eulerian_paths(const multi_linestring_type_fp& paths, bool reversible, bool unique);
