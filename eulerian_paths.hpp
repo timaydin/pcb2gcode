@@ -62,24 +62,28 @@ template <typename point_t, typename linestring_t>
 class path_manager {
  public:
   // The bool indicates if the path is reversible.
-  path_manager(const std::vector<std::pair<linestring_t, bool>>& paths) : paths(paths) {
-    for (size_t i = 0; i < paths.size(); i++) {
-      auto& path = paths[i].first;
-      if (path.size() < 2) {
-        // Valid path must have a start and end.
-        continue;
-      }
-      point_t start = path.front();
-      point_t end = path.back();
-      all_start_vertices.insert(start);
-      if (paths[i].second) {
-        bidi_vertex_to_unvisited_path_index.emplace(start, std::make_pair(i, Side::front));
-        bidi_vertex_to_unvisited_path_index.emplace(end, std::make_pair(i, Side::back));
-        all_start_vertices.insert(end);
-      } else {
-        start_vertex_to_unvisited_path_index.emplace(start, std::make_pair(i, Side::front));
-        end_vertex_to_unvisited_path_index.emplace(end, std::make_pair(i, Side::back));
-      }
+  path_manager(const std::vector<std::pair<linestring_t, bool>>& paths) {
+    for (auto const& path : paths) {
+      add_path(path.first, path.second);
+    }
+  }
+  void add_path(const linestring_t& path, bool reversible) {
+    paths.push_back(std::make_pair(path, reversible));
+    size_t index = paths.size() - 1;
+    if (path.size() < 2) {
+      // Valid path must have a start and end.
+      return;
+    }
+    point_t start = path.front();
+    point_t end = path.back();
+    all_start_vertices.insert(start);
+    if (reversible) {
+      bidi_vertex_to_unvisited_path_index.emplace(start, std::make_pair(index, Side::front));
+      bidi_vertex_to_unvisited_path_index.emplace(end, std::make_pair(index, Side::back));
+      all_start_vertices.insert(end);
+    } else {
+      start_vertex_to_unvisited_path_index.emplace(start, std::make_pair(index, Side::front));
+      end_vertex_to_unvisited_path_index.emplace(end, std::make_pair(index, Side::back));
     }
   }
   auto& get_all_start_vertices() const {
@@ -135,7 +139,7 @@ class path_manager {
     }
   }
  private:
-  const std::vector<std::pair<linestring_t, bool>>& paths;
+  std::vector<std::pair<linestring_t, bool>> paths;
   // Create a map from vertex to each path that start at that vertex.
   // It's a map to an index into the input paths.  The bool tells us
   // if the point_t is at the front or back.  For start, it will
