@@ -20,6 +20,16 @@ AC_PROG_CXX
 AC_PROG_CC
 LT_INIT
 
+# If --enable-debug is not specified, set -DNDEBUG to turn off the asserts.
+AC_ARG_ENABLE([debug],
+  AS_HELP_STRING([--enable-debug], [enable debug mode (default is no)]),
+  [debug_enabled=$enableval],
+  [debug_enabled=no])
+
+AS_IF([test "x$debug_enabled" = "xno"], [
+  CPPFLAGS="$CPPFLAGS -DNDEBUG"
+])
+
 # Check for C++11
 AX_CXX_COMPILE_STDCXX_14
 
@@ -114,7 +124,23 @@ AC_SUBST([gerbv_CFLAGS_SYSTEM], ['$(subst -I/usr/local/include/gerbv-2.10.1-dev~
 AC_HEADER_STDBOOL
 AC_C_INLINE
 
-# Checks for library functions.
-
-AC_CONFIG_FILES([Makefile man/Makefile])
+AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([man/Makefile])
 AC_OUTPUT
+
+# Configuration summary
+AC_MSG_NOTICE([
+========================================
+  $PACKAGE_NAME $PACKAGE_VERSION
+========================================
+
+Configuration:
+  Compiler:        $CXX
+  CXXFLAGS:        $CXXFLAGS
+  CPPFLAGS:        $CPPFLAGS
+  LDFLAGS:         $LDFLAGS
+  Debug mode:      $enable_debug
+
+Install prefix:    $prefix
+========================================
+])
