@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(do_nothing_points) {
 // |   |   |
 // 7---8---9
 BOOST_AUTO_TEST_CASE(window_pane) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{1,2}, true),
       make_pair(vector<int>{2,3}, true),
       make_pair(vector<int>{4,5}, true),
@@ -68,8 +68,8 @@ BOOST_AUTO_TEST_CASE(window_pane) {
       make_pair(vector<int>{5,8}, true),
       make_pair(vector<int>{3,6}, true),
       make_pair(vector<int>{6,9}, true),
-    });
-  run_test<int>(euler_paths, 2);
+    };
+  run_test<int>(mls, 2);
 }
 
 // 3x3 grid connected like a window pane, but corners are longer paths:
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(window_pane) {
 // |   |   |
 // 7---8---9
 BOOST_AUTO_TEST_CASE(window_pane_with_longer_corners) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{4,5}, true),
       make_pair(vector<int>{5,6}, true),
       make_pair(vector<int>{4,7,8}, true),
@@ -88,8 +88,8 @@ BOOST_AUTO_TEST_CASE(window_pane_with_longer_corners) {
       make_pair(vector<int>{6,9,8}, true),
       make_pair(vector<int>{4,1,2}, true),
       make_pair(vector<int>{2,3,6}, true),
-    });
-  run_test<int>(euler_paths, 2);
+    };
+  run_test<int>(mls, 2);
 }
 
 // Bridge
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(window_pane_with_longer_corners) {
 // |   |   |   |
 // 3---4   7---8
 BOOST_AUTO_TEST_CASE(bridge) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{5,2}, true),
       make_pair(vector<int>{2,1}, true),
       make_pair(vector<int>{1,6}, true),
@@ -107,8 +107,8 @@ BOOST_AUTO_TEST_CASE(bridge) {
       make_pair(vector<int>{2,4}, true),
       make_pair(vector<int>{1,7}, true),
       make_pair(vector<int>{6,8}, true),
-    });
-  run_test<int>(euler_paths, 1);
+    };
+  run_test<int>(mls, 1);
 }
 
 // Disjoint Loops and two degenerate paths
@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE(bridge) {
 // |   |   |   |
 // 3---4   7---8
 BOOST_AUTO_TEST_CASE(disjoint_loops) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{5,2}, true),
       make_pair(vector<int>{1,6}, true),
       make_pair(vector<int>{3,4}, true),
@@ -128,8 +128,8 @@ BOOST_AUTO_TEST_CASE(disjoint_loops) {
       make_pair(vector<int>{0,9}, true),
       make_pair(vector<int>{}, true),
       make_pair(vector<int>{12}, true),
-    });
-  run_test<int>(euler_paths, 3);
+    };
+  run_test<int>(mls, 3);
 }
 
 // bidi and directional together
@@ -138,13 +138,13 @@ BOOST_AUTO_TEST_CASE(disjoint_loops) {
 // v   |
 // 3---4
 BOOST_AUTO_TEST_CASE(mixed1) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{1,2}, false),
       make_pair(vector<int>{1,3}, false),
       make_pair(vector<int>{2,4}, true),
       make_pair(vector<int>{3,4}, true),
-    });
-  run_test<int>(euler_paths, 2);
+    };
+  run_test<int>(mls, 2);
 }
 
 // bidi and directional together
@@ -153,13 +153,13 @@ BOOST_AUTO_TEST_CASE(mixed1) {
 // v   |
 // 3---4
 BOOST_AUTO_TEST_CASE(mixed2) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{2,1}, false),
       make_pair(vector<int>{1,3}, false),
       make_pair(vector<int>{2,4}, true),
       make_pair(vector<int>{3,4}, true),
-    });
-  run_test<int>(euler_paths, 1);
+    };
+  run_test<int>(mls, 1);
 }
 
 // 3x3 grid bidi
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(mixed2) {
 // |   |   |
 // 7---8---9
 BOOST_AUTO_TEST_CASE(mixed3) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{1,2}, true),
       make_pair(vector<int>{2,3}, true),
       make_pair(vector<int>{1,4}, true),
@@ -184,26 +184,26 @@ BOOST_AUTO_TEST_CASE(mixed3) {
       make_pair(vector<int>{6,9}, true),
       make_pair(vector<int>{7,8}, true),
       make_pair(vector<int>{8,9}, true),
-    });
-  run_test<int>(euler_paths, 4);
+    };
+  run_test<int>(mls, 4);
 }
 
 // At least one of the paths must be turned around.
 BOOST_AUTO_TEST_CASE(start_second) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{0,1}, true),
       make_pair(vector<int>{0,2}, true),
-    });
-  run_test<int>(euler_paths, 1);
+    };
+  run_test<int>(mls, 1);
 }
 
 // Directional paths with a loop.
 BOOST_AUTO_TEST_CASE(directional_loop) {
-  vector<pair<vector<int>, bool>> euler_paths = get_eulerian_paths<int, vector<int>>({
+  vector<pair<vector<int>, bool>> mls{
       make_pair(vector<int>{0, 0}, false),
       make_pair(vector<int>{1, 0}, false),
-    });
-  run_test<int>(euler_paths, 1);
+    };
+  run_test<int>(mls, 1);
 }
 
 // Prefer straight lines.
