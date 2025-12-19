@@ -18,7 +18,7 @@ jobs:
       matrix:
         os: [ubuntu, macos, windows]
         boost: ['latest'] # 1_66 disabled because of discrepancies in wide_oval
-        geos: ['3.13.1', 'latest', 'none'] # TODO: Put 3.9.0 geos back again.
+        geos: ['3.13.1', 'latest', 'none']
         compiler: ['g++-10', 'g++'] # TODO: Put clang++ back again.
         exclude:
           - os: macos # Temporarily disable until fixed
@@ -347,7 +347,7 @@ jobs:
       run: make -j ${NUM_CPUS} check-valgrind || (cat mem-test-suite.log && false)
 
     - name: Run integration tests
-      if: matrix.boost == '1_66' && matrix.geos == 'main'
+      if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os == 'ubuntu'
       run: |
         sudo apt-get install python3-setuptools
         pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest in_place
