@@ -489,12 +489,14 @@ multi_polygon_type_fp simplify_cutins(const ring_type_fp& ring) {
   if (new_mls.size() == 0) {
     return {};
   }
+#ifndef NDEBUG
   if (new_mls.size() != 1 || new_mls[0].front() != new_mls[0].back()) {
     cerr << "Internal error in gerberimporter" << endl;
     cerr << bg::wkt(ring) << std::endl;
     cerr << bg::wkt(new_mls) << std::endl;
     throw gerber_exception();
   }
+#endif
   ring_type_fp new_ring(new_mls[0].cbegin(), new_mls[0].cend());
   vector<ring_type_fp> all_rings = get_all_rings(new_ring);
   multi_polygon_type_fp ret;
