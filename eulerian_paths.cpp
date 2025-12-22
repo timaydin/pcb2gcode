@@ -558,15 +558,26 @@ class eulerian_paths {
   }
   path_manager<point_t, linestring_t> paths;
 }; //class eulerian_paths
+
 template <typename point_t, typename linestring_t>
 bool check_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& before,
                           const std::vector<std::pair<linestring_t, bool>>& after) {
   std::unordered_multiset<std::pair<std::pair<point_t, point_t>, bool>> all_edges;
+  // Cheeck that each edge in the input is also in the output.
+  // Also check that the number of output paths is reasonable.
+  // At worst, nothing connected and the number of lines and rings is unchanged.
+  size_t num_lines_before = 0;
+  size_t num_rings_before = 0;
   for (auto const& linestring : before) {
     auto const reversible = linestring.second;
     auto const path = linestring.first;
     if (path.size() < 2) {
       continue;
+    }
+    if (path.front() == path.back()) {
+      num_rings_before++;
+    } else {
+      num_lines_before++;
     }
     for (size_t i = 0; i < path.size()-1; i++) {
       auto const p0 = path[i];
@@ -575,8 +586,15 @@ bool check_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& befo
       all_edges.insert({edge, reversible});
     }
   }
+  size_t num_lines_after = 0;
+  size_t num_rings_after = 0;
   for (auto const& linestring : after) {
     auto const path = linestring.first;
+    if (path.front() == path.back()) {
+      num_rings_after++;
+    } else {
+      num_lines_after++;
+    }
     for (size_t i = 0; i < path.size()-1; i++) {
       auto const p0 = path[i];
       auto const p1 = path[i+1];
@@ -596,6 +614,15 @@ bool check_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& befo
     }
   }
   if (all_edges.size() > 0) {
+    return false;
+  }
+  auto const num_elements_after = num_lines_after + num_rings_after;
+  auto const num_elements_before = num_lines_before + num_rings_before;
+  // We expect to always do at least as well as the input.  Also, the only way to have more rings than before is to combine
+  // lines.  So if we have fewer rings in the result, we should have fewer elements over all.
+  if (num_elements_after > num_elements_before || // We should not see the number of paths increase.
+       // If we didn't decrease the number of elements then we should at least not see fewer rings.
+      (num_elements_after == num_elements_before && num_rings_after < num_rings_before)) {
     return false;
   }
   return true;
