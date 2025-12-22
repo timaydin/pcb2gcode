@@ -26,7 +26,7 @@ static void print_euler_paths(vector<pair<linestring_type, bool>> euler_paths) {
 }
 
 template <typename point_type, typename linestring_type>
-void run_test(vector<pair<linestring_type, bool>> mls, size_t expected_size) {
+auto run_test(vector<pair<linestring_type, bool>> mls, size_t expected_size) {
   vector<pair<linestring_type, bool>> result =
     get_eulerian_paths<point_type, linestring_type>(mls);
   std::string test_name = boost::unit_test::framework::current_test_case().full_name();
@@ -35,6 +35,7 @@ void run_test(vector<pair<linestring_type, bool>> mls, size_t expected_size) {
   std::cout << std::endl;
   BOOST_CHECK(check_eulerian_paths<point_type>(mls, result));
   BOOST_CHECK_EQUAL(result.size(), expected_size);
+  return result;
 }
 
 
@@ -188,6 +189,53 @@ BOOST_AUTO_TEST_CASE(mixed3) {
   run_test<int>(mls, 4);
 }
 
+BOOST_AUTO_TEST_CASE(undirected_ring) {
+  std::vector<int> points{
+    0,1,2,2,1,0,
+  };
+  vector<pair<std::vector<int>, bool>> mls;
+  for (size_t i = 0; i < points.size(); i++) {
+    mls.push_back(make_pair(std::vector<int>{points[i], points[(i+1) % points.size()]}, true));
+  }
+  auto result = run_test<int>(mls, 1);
+  BOOST_CHECK_EQUAL(result.size(), 1);
+  BOOST_CHECK_EQUAL(result[0].first.front(), result[0].first.back());
+}
+
+BOOST_AUTO_TEST_CASE(undirected_ring2) {
+  std::vector<point_type_fp> points{
+    {1, 1},
+    {3, 0},
+    {1, 1},
+    {1, 2},
+    {3, 2},
+    {4, 2},
+    {3, 2},
+    {1, 2},
+    {0, 2},
+  };
+  vector<pair<linestring_type_fp, bool>> mls;
+  for (size_t i = 0; i < points.size(); i++) {
+    mls.push_back(make_pair(linestring_type_fp{points[i], points[(i+1) % points.size()]}, true));
+  }
+  auto result = run_test<point_type_fp, linestring_type_fp>(mls, 1);
+  BOOST_CHECK_EQUAL(result.size(), 1);
+  BOOST_CHECK_EQUAL(result[0].first.front(), result[0].first.back());
+}
+
+BOOST_AUTO_TEST_CASE(duplicate_edge) {
+  vector<pair<vector<int>, bool>> mls{
+      make_pair(vector<int>{4,7}, true),
+      make_pair(vector<int>{4,7}, true),
+      make_pair(vector<int>{4,7}, true),
+      make_pair(vector<int>{8,5}, false),
+      make_pair(vector<int>{4,7}, true),
+      make_pair(vector<int>{8,5}, false),
+      make_pair(vector<int>{7,8}, true),
+    };
+  run_test<int>(mls, 2);
+}
+
 // At least one of the paths must be turned around.
 BOOST_AUTO_TEST_CASE(start_second) {
   vector<pair<vector<int>, bool>> mls{
@@ -237,60 +285,6 @@ BOOST_AUTO_TEST_CASE(prefer_straight_lines) {
      true},
   };
   BOOST_CHECK_EQUAL(result, expected);
-}
-
-BOOST_AUTO_TEST_CASE(must_start_tests) {
-  vector<std::tuple<size_t, size_t, size_t, bool>> tests{
-    // Sum = 0
-    std::make_tuple(0, 0, 0, false),
-
-    // Sum = 1
-    std::make_tuple(0, 0, 1, true),
-    std::make_tuple(0, 1, 0, false),
-    std::make_tuple(1, 0, 0, true),
-
-    // Sum = 2
-    std::make_tuple(0, 0, 2, false),
-    std::make_tuple(0, 1, 1, false),
-    std::make_tuple(0, 2, 0, false),
-    std::make_tuple(1, 0, 1, false),
-    std::make_tuple(1, 1, 0, false),
-    std::make_tuple(2, 0, 0, true),
-
-    // Sum = 3
-    std::make_tuple(0, 0, 3, true),
-    std::make_tuple(0, 1, 2, true),
-    std::make_tuple(0, 2, 1, false),
-    std::make_tuple(0, 3, 0, false),
-    std::make_tuple(1, 0, 2, true),
-    std::make_tuple(1, 1, 1, true),
-    std::make_tuple(1, 2, 0, false),
-    std::make_tuple(2, 0, 1, true),
-    std::make_tuple(2, 1, 0, true),
-    std::make_tuple(3, 0, 0, true),
-
-    // Sum = 4
-    std::make_tuple(0, 0, 4, false),
-    std::make_tuple(0, 1, 3, false),
-    std::make_tuple(0, 2, 2, false),
-    std::make_tuple(0, 3, 1, false),
-    std::make_tuple(0, 4, 0, false),
-    std::make_tuple(1, 0, 3, false),
-    std::make_tuple(1, 1, 2, false),
-    std::make_tuple(1, 2, 1, false),
-    std::make_tuple(1, 3, 0, false),
-    std::make_tuple(2, 0, 2, false),
-    std::make_tuple(2, 1, 1, false),
-    std::make_tuple(2, 2, 0, false),
-    std::make_tuple(3, 0, 1, true),
-    std::make_tuple(3, 1, 0, true),
-    std::make_tuple(4, 0, 0, true),
-  };
-  for (const auto& test : tests) {
-    BOOST_TEST_CONTEXT("must_start_helper(" << std::get<0>(test) << ", " << std::get<1>(test) << ", " << std::get<2>(test) << ")") {
-      BOOST_CHECK_EQUAL(must_start_helper(std::get<0>(test), std::get<1>(test), std::get<2>(test)), std::get<3>(test));
-    }
-  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

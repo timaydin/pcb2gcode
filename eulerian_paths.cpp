@@ -29,6 +29,14 @@ static inline Side operator!(const Side& s) {
   }
 }
 
+static inline Side operator^(const Side& s, bool flip) {
+  if (flip) {
+    return !s;
+  } else {
+    return s;
+  }
+}
+
 static inline std::ostream& operator<<(std::ostream& out, const Side& s) {
   switch(s) {
    case Side::front:
@@ -41,21 +49,80 @@ static inline std::ostream& operator<<(std::ostream& out, const Side& s) {
   return out;
 }
 
-// Made public for testing.
-bool must_start_helper(size_t out_edges, size_t in_edges, size_t bidi_edges) {
-  if (out_edges > in_edges + bidi_edges) {
-    // Even with all the in and bidi paths, we would still need a path that starts here.
-    return true;
+template <typename point_t, typename linestring_t>
+class path_manager;
+
+class path_and_direction {
+ public:
+  template <typename point_t, typename linestring_t> friend class path_manager;
+  friend struct std::hash<path_and_direction>;
+  path_and_direction() = default;
+  path_and_direction(size_t path_index, Side side) : path_index(path_index), side(side) {}
+  path_and_direction operator!() const {
+    return path_and_direction(path_index, !side);
   }
-  if (in_edges > out_edges + bidi_edges) {
-    // Pairing all bidi edges with in edges leaves no edges to start from.
-    return false;
+  bool operator==(const path_and_direction& other) const {
+    return path_index == other.path_index && side == other.side;
   }
-  // By this point, out - in <= bidi and out - in >= -bidi so abs(out-in) <=
-  // bidi If number of unmatched bidi edges is odd then this must be a start.
-  // (bidi - abs(out - in)) % 2 works but we can avoid the abs by just addings.
-  return (bidi_edges + out_edges + in_edges) % 2 == 1;
-}
+ private:
+  size_t path_index;
+  Side side;
+};
+
+} // namespace eulerian_paths
+
+// Hash specialization for path_and_direction
+namespace std {
+template <>
+struct hash<eulerian_paths::path_and_direction> {
+  size_t operator()(const eulerian_paths::path_and_direction& p) const noexcept {
+    return hash<std::pair<size_t, eulerian_paths::Side>>()(std::make_pair(p.path_index, p.side));
+  }
+};
+} // namespace std
+
+namespace eulerian_paths {
+
+template <typename linestring_t>
+class linestring_iterator {
+ public:
+  using value_type = typename linestring_t::value_type;
+  using difference_type = typename linestring_t::difference_type;
+  using pointer = typename linestring_t::const_pointer;
+  using reference = typename linestring_t::const_reference;
+  using iterator_category = std::bidirectional_iterator_tag;
+
+  linestring_iterator() = default;
+  linestring_iterator(typename linestring_t::const_iterator it) : it(it) {}
+  linestring_iterator(typename linestring_t::const_reverse_iterator it) : it(it) {}
+
+  reference operator*() const {
+    return boost::apply_visitor([](auto&& iter) -> reference { return *iter; }, it);
+  }
+
+  linestring_iterator& operator++() {
+    boost::apply_visitor([](auto& iter) { ++iter; }, it);
+    return *this;
+  }
+
+  linestring_iterator& operator--() {
+    boost::apply_visitor([](auto& iter) { --iter; }, it);
+    return *this;
+  }
+
+  linestring_iterator operator+(difference_type n) const {
+    return boost::apply_visitor([n](auto iter) {
+      return linestring_iterator(iter + n);
+    }, it);
+  }
+
+  bool operator!=(const linestring_iterator& other) const {
+    return it != other.it;
+  }
+
+ private:
+  boost::variant<typename linestring_t::const_iterator, typename linestring_t::const_reverse_iterator> it;
+};
 
 /* This class holds on to all the paths and uses std::multimap internally to
  * make it quick to look up which paths extend from a given vertex and in which
@@ -64,32 +131,41 @@ template <typename point_t, typename linestring_t>
 class path_manager {
  public:
   // The bool indicates if the path is reversible.
-  path_manager(const std::vector<std::pair<linestring_t, bool>>& paths) {
-    for (auto const& path : paths) {
-      add_path(path.first, path.second);
+  path_manager(const std::vector<std::pair<linestring_t, bool>>& paths) : paths(paths) {
+    for (size_t index = 0; index < paths.size(); index++) {
+      auto const& path = paths[index].first;
+      if (path.size() < 2) {
+        // Valid path must have a start and end.
+        continue;
+      }
+      point_t start = path.front();
+      point_t end = path.back();
+      all_vertices.insert(start);
+      all_vertices.insert(end);
+      auto const reversible = paths[index].second;
+      if (reversible) {
+        bidi_vertex_to_unvisited_path_index.emplace(start, path_and_direction(index, Side::front));
+        bidi_vertex_to_unvisited_path_index.emplace(end, path_and_direction(index, Side::back));
+      } else {
+        start_vertex_to_unvisited_path_index.emplace(start, path_and_direction(index, Side::front));
+        end_vertex_to_unvisited_path_index.emplace(end, path_and_direction(index, Side::back));
+      }
     }
   }
-  void add_path(const linestring_t& path, bool reversible) {
-    paths.push_back(std::make_pair(path, reversible));
-    size_t index = paths.size() - 1;
-    if (path.size() < 2) {
-      // Valid path must have a start and end.
-      return;
-    }
-    point_t start = path.front();
-    point_t end = path.back();
-    all_start_vertices.insert(start);
-    if (reversible) {
-      bidi_vertex_to_unvisited_path_index.emplace(start, std::make_pair(index, Side::front));
-      bidi_vertex_to_unvisited_path_index.emplace(end, std::make_pair(index, Side::back));
-      all_start_vertices.insert(end);
-    } else {
-      start_vertex_to_unvisited_path_index.emplace(start, std::make_pair(index, Side::front));
-      end_vertex_to_unvisited_path_index.emplace(end, std::make_pair(index, Side::back));
-    }
+
+  void bidi_to_directional(path_and_direction index_and_side, bool flip) {
+    // Remove it from the bidi_vertex_to_unvisited_path_index.
+    remove_path(index_and_side);
+    // We won't change the original reversability aspect, just make it directional.
+    // Add it to the directional maps, in the correct direction.
+    index_and_side.side = index_and_side.side ^ flip;
+    auto const start_vertex = get_front(index_and_side);
+    auto const end_vertex = get_back(index_and_side);
+    start_vertex_to_unvisited_path_index.emplace(start_vertex, path_and_direction(index_and_side.path_index, index_and_side.side));
+    end_vertex_to_unvisited_path_index.emplace(end_vertex, path_and_direction(index_and_side.path_index, !index_and_side.side));
   }
-  auto& get_all_start_vertices() const {
-    return all_start_vertices;
+  auto& get_all_vertices() const {
+    return all_vertices;
   }
   auto& get_start_vertex_to_unvisited_path_index() const {
     return start_vertex_to_unvisited_path_index;
@@ -103,62 +179,81 @@ class path_manager {
   auto& get_path(size_t index) const {
     return paths[index];
   }
-  void remove_path(size_t index) {
-    auto& path = paths[index].first;
-    auto reversible = paths[index].second;
-    if (reversible) {
-      // Bidi path.
-      auto range = bidi_vertex_to_unvisited_path_index.equal_range(path.front());
-      for (auto it = range.first; it != range.second; it++) {
-        if (it->second.first == index) {
-          bidi_vertex_to_unvisited_path_index.erase(it);
-          break;
-        }
-      }
-      range = bidi_vertex_to_unvisited_path_index.equal_range(path.back());
-      for (auto it = range.first; it != range.second; it++) {
-        if (it->second.first == index) {
-          bidi_vertex_to_unvisited_path_index.erase(it);
-          break;
-        }
-      }
-    } else {
-      // Non-bidi path.
-      auto range = start_vertex_to_unvisited_path_index.equal_range(path.front());
-      for (auto it = range.first; it != range.second; it++) {
-        if (it->second.first == index) {
-          start_vertex_to_unvisited_path_index.erase(it);
-          break;
-        }
-      }
-      range = end_vertex_to_unvisited_path_index.equal_range(path.back());
-      for (auto it = range.first; it != range.second; it++) {
-        if (it->second.first == index) {
-          end_vertex_to_unvisited_path_index.erase(it);
-          break;
+  void remove_path(path_and_direction const index_and_side) {
+    auto& path = paths[index_and_side.path_index].first;
+    // We don't know if the path is being used as a bidi path or a directional path and
+    // we don't know if it is used in a forward or reverse direction.  Just remove it from all
+    // three maps.
+    for (auto& map : {&start_vertex_to_unvisited_path_index,
+                      &end_vertex_to_unvisited_path_index,
+                      &bidi_vertex_to_unvisited_path_index}) {
+      for (auto& vertex : {path.front(), path.back()}) {
+        auto range = map->equal_range(vertex);
+        for (auto it = range.first; it != range.second; it++) {
+          if (it->second.path_index == index_and_side.path_index) {
+            map->erase(it);
+            break;
+          }
         }
       }
     }
   }
- private:
-  std::vector<std::pair<linestring_t, bool>> paths;
+  auto get_point(path_and_direction const& index_and_side, int index) const {
+    if (index >= 0) {
+      return *(get_cbegin(index_and_side) + index);
+    } else {
+      return *(get_cend(index_and_side) + index);
+    }
+  }
+  auto get_front(path_and_direction const& index_and_side) const {
+    return get_point(index_and_side, 0);
+  }
+  auto get_back(path_and_direction const& index_and_side) const {
+    return get_point(index_and_side, -1);
+  }
+  auto get_path_reversible(path_and_direction const& index_and_side) const {
+    return paths[index_and_side.path_index].second;
+  }
+  auto get_path_size(path_and_direction const& index_and_side) const {
+    return paths[index_and_side.path_index].first.size();
+  }
+  auto get_cbegin(path_and_direction const& index_and_side) const {
+    linestring_iterator<linestring_t> ret;
+    if (index_and_side.side == Side::front) {
+      ret = paths[index_and_side.path_index].first.cbegin();
+    } else {
+      ret = paths[index_and_side.path_index].first.crbegin();
+    }
+    return ret;
+  }
+  auto get_cend(path_and_direction const& index_and_side) const {
+    linestring_iterator<linestring_t> ret;
+    if (index_and_side.side == Side::front) {
+      ret = paths[index_and_side.path_index].first.cend();
+    } else {
+      ret = paths[index_and_side.path_index].first.crend();
+    }
+    return ret;
+  }
+private:
+  std::vector<std::pair<linestring_t, bool>> const& paths;
   // Create a map from vertex to each path that start at that vertex.
   // It's a map to an index into the input paths.  The bool tells us
   // if the point_t is at the front or back.  For start, it will
   // always be true.
-  std::multimap<point_t, std::pair<size_t, Side>> start_vertex_to_unvisited_path_index;
+  std::multimap<point_t, path_and_direction> start_vertex_to_unvisited_path_index;
   // Create a map from vertex to each bidi path that may start or end
   // at that vertex.  It's a map to an index into the input paths.
   // The bool tells us if the point_t is at the front or back.  For
   // bidi, it could be either.
-  std::multimap<point_t, std::pair<size_t, Side>> bidi_vertex_to_unvisited_path_index;
+  std::multimap<point_t, path_and_direction> bidi_vertex_to_unvisited_path_index;
   // Create a map from vertex to each path that may start or end at
   // that vertex.  It's a map to an index into the input paths.  The
   // bool tells us if the point_t is at the front or back.  For end,
   // it will always be false.
-  std::multimap<point_t, std::pair<size_t, Side>> end_vertex_to_unvisited_path_index;
+  std::multimap<point_t, path_and_direction> end_vertex_to_unvisited_path_index;
   // Only the ones that have at least one potential edge leading out.
-  std::set<point_t> all_start_vertices;
+  std::set<point_t> all_vertices;
 };
 
 /* This finds a minimal number of eulerian paths that cover the input.  The
@@ -179,38 +274,110 @@ class eulerian_paths {
   eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& paths) :
     paths(paths) {}
   std::vector<std::pair<linestring_t, bool>> get() {
-    /* We use Hierholzer's algorithm to find the minimum cycles.  First, make a
-     * path from each vertex with more paths out than in.  In the reversible
-     * case, that means an odd path count.  Follow the path until it ends.
-     *
-     * For the reversible case, the start vertex will have count decrease by
-     * one, the end vertex will decrease from 1 to 0, and all other vertices
-     * will decrease by two.  So the result is that two vertices will have the
-     * edges counts go from odd to even and the rest will have edge counts stay
-     * either odd or even.
-     *
-     * For non-reversible, we only start at vertices where the out edges is
-     * greater than in edges.  A path must start at those because any path that
-     * goes through will subtract one from both inbound and outbound edge counts
-     * so eventually the vertex will end with only outbound eddges and so must
-     * be the start of a path.  For the new path, the start vertex will have
-     * outbound count decreased by one.  The end path will have inbound
-     * decreased by one and outbound must be zero.  All middle vertices will
-     * have inbound and outbound decreased by one each.  The result is that the
-     * outbound minus inbound count for each vertex stays the same except for
-     * the start where it goes one down by one and the end where it goes up by
-     * one.  The start was positive because we only started at edges where
-     * outbound was greater than inbound and the end must have been negative
-     * because outbound is zero.  So both the start and end vertex outbound
-     * minus inbound move closer to zero by one.  Doing this on all vertices
-     * where outbound is greater than inbound will bring all those vertices to
-     * outbound==inbound.  And because the total_outbound==total_inbound, that
-     * means that all vertices will have the same number of outbound and
-     * inbound, which means that we have made the precondition to stitch_loops.
+    /* We use Hierholzer's algorithm to find the minimum cycles.  However, some
+     * paths are bidirectional and some are not.  To deal with this, we first convert
+     * all paths to directional.  Then we use Hierholzer's algorithm to find the
+     * minimum cycles.
      */
+    // Convert all paths to bidirectional paths.
+    auto vertices_to_examine = paths.get_all_vertices();
+    while (paths.get_bidi_vertex_to_unvisited_path_index().size() > 0) {
+      while (vertices_to_examine.size() > 0) {
+        auto const vertex = *vertices_to_examine.begin();
+        auto const out_edges = paths.get_start_vertex_to_unvisited_path_index().count(vertex);
+        auto const in_edges = paths.get_end_vertex_to_unvisited_path_index().count(vertex);
+        std::unordered_set<path_and_direction> seen_bidi_edges;
+        auto bidi_edge_range = paths.get_bidi_vertex_to_unvisited_path_index().equal_range(vertex);
+        for (auto bidi_edge_ptr = bidi_edge_range.first; bidi_edge_ptr != bidi_edge_range.second; bidi_edge_ptr++) {
+          // Any bidi edge for which is connected to this vertex in both directions must be ignored.
+          path_and_direction bidi_edge = bidi_edge_ptr->second;
+          if (seen_bidi_edges.count(!bidi_edge) == 0) {
+            seen_bidi_edges.insert(bidi_edge);
+          } else {
+            // If we have already seen this bidi edge in the other direction,
+            // ignore it because we know that this is a self-loop.
+            // Also, we have to account for ignoring the first time that we saw it.
+            seen_bidi_edges.erase(!bidi_edge);
+          }
+        }
+        auto const bidi_edges = seen_bidi_edges.size();
+        bool convert_to_out = in_edges >= bidi_edges + out_edges;
+        bool convert_to_in = out_edges >= bidi_edges + in_edges;
+        if (bidi_edges && (convert_to_out ^ convert_to_in)) {
+          // If either convert_to_out or convert_to_in, we can convert bidi edges.
+          // If neither are true, we can't convert.
+          // If both are true, there are no bidi edges to convert.
+          for (const auto& bidi_edge_and_path : seen_bidi_edges) {
+            // We need to flip if the edge is connected in the wrong direction.
+            bool flip = convert_to_in;
+            paths.bidi_to_directional(bidi_edge_and_path, flip);
+            // The endpoints of the edge need to be re-examined.
+            vertices_to_examine.insert(paths.get_front(bidi_edge_and_path));
+            vertices_to_examine.insert(paths.get_back(bidi_edge_and_path));
+          }
+        }
+        // Remove the vertex from the set of vertices to examine.
+        vertices_to_examine.erase(vertex);
+      }
+      if (paths.get_bidi_vertex_to_unvisited_path_index().size() > 0) {
+        // We've examined all vertices and converted as many bidi edges to directional edges as possible
+        // but there are still some bidi edges left.
+        // Pick a bidi edge that has the best score from an edge already in there.
+        // Score is how unbalanced this would cause the graph to be and then angle.  Lowest is best.
+        std::pair<long, double> best_score(std::numeric_limits<long>::max(), std::numeric_limits<double>::max());
+        path_and_direction best_path_index_and_side = paths.get_bidi_vertex_to_unvisited_path_index().begin()->second;
+        for (auto const& bidi_edge_and_path : paths.get_bidi_vertex_to_unvisited_path_index()) {
+          auto const& bidi_edge = bidi_edge_and_path.second;
+          auto const out_edges_at_end = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
+          auto const in_edges_at_end = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
+          auto const in_edges_at_start = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
+          auto const out_edges_at_start = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
+          // Find everything that starts at the end of the bidi_edge.  We aim to keep the number of out edges equal to the number of in edges
+          // at each vertex.
+          auto const start_options = paths.get_start_vertex_to_unvisited_path_index().equal_range(paths.get_back(bidi_edge));
+          for (auto option = start_options.first; option != start_options.second; option++) {
+            auto const& option_edge = option->second;
+            auto const &p0 = paths.get_point(bidi_edge, -2);
+            auto const &p1 = paths.get_point(option_edge, 0);
+            auto const &p2 = paths.get_point(option_edge, 1);
+            auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
+            auto const imbalance = std::abs(static_cast<long>(out_edges_at_end) - static_cast<long>(in_edges_at_end + 1)) +
+                                   std::abs(static_cast<long>(out_edges_at_start + 1) - static_cast<long>(in_edges_at_start));
+            auto const score = std::make_pair(imbalance, cosine_of_angle);
+            // Lowest is best.
+            if (score < best_score) {
+              best_score = score;
+              best_path_index_and_side = bidi_edge;
+            }
+          }
+          // Find everything that ends at the start of bidi_edge_path.
+          auto const end_options = paths.get_end_vertex_to_unvisited_path_index().equal_range(paths.get_front(bidi_edge));
+          for (auto option = end_options.first; option != end_options.second; option++) {
+            auto const& option_edge = option->second;
+            auto const &p0 = paths.get_point(option_edge, 1); // The point one away from vertex.
+            auto const &p1 = paths.get_point(option_edge, 0); // The point at vertex.
+            auto const &p2 = paths.get_point(bidi_edge, 1);
+            auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
+            auto const imbalance = std::abs(static_cast<long>(out_edges_at_end) - static_cast<long>(in_edges_at_end + 1)) +
+                                   std::abs(static_cast<long>(out_edges_at_start + 1) - static_cast<long>(in_edges_at_start));
+            auto const score = std::make_pair(imbalance, cosine_of_angle);
+            // Lowest is best.
+            if (score < best_score) {
+              best_score = score;
+              best_path_index_and_side = bidi_edge;
+            }
+          }
+        }
+        paths.bidi_to_directional(best_path_index_and_side, false);
+        // The endpoints of the bidi edge need to be re-examined.
+        vertices_to_examine.insert(paths.get_front(best_path_index_and_side));
+        vertices_to_examine.insert(paths.get_back(best_path_index_and_side));
+      }
+    }
 
+    // All edges are now directional.
     std::vector<std::pair<linestring_t, bool>> euler_paths;
-    for (const auto& vertex : paths.get_all_start_vertices()) {
+    for (const auto& vertex : paths.get_all_vertices()) {
       while (must_start(vertex)) {
         // Make a path starting from vertex with odd count.
         std::pair<linestring_t, bool> new_path({vertex}, true);
@@ -219,23 +386,20 @@ class eulerian_paths {
         }
         euler_paths.push_back(new_path);
       }
-      // The vertex is no longer must_start.  So it must have the same or fewer
-      // out edges than in edges, even accounting for bidi edges becoming in
-      // edges.  Any path that passes into the vertex will either pass back out,
-      // removing one in edge and one out edge, or get stuck because there are
-      // zero out edges.  In either case, the number of out edges <= in edges.
     }
-    // All vertices have out edges <= in edges.  But total out edges == total in
-    // edges so all vertices must have an equal number of out and in edges.  So
-    // if we make a path from one, it is sure to end back where it started.
-    // We'll go over all our current Euler paths and stitch in loops anywhere
-    // that there is an unvisited edge.
+    // All vertices have the number of out edges less than or equal to the number of in edges.
+    // We know that the total number of out edges is equal to the total number of in edges.
+    // If there existed a vertex with more in edges than out edges, that would mean that all the other
+    // vertices would together have more out edges than in edges, in total.  But that would mean that there must
+    // be some other vertex with more out edges than in edges, which we already said is not true.  So it
+    // must be the case that all vertices have the same number of out edges as in edges.  Which means that only
+    // loops remain.  So now we can stitch.
     for (auto& euler_path : euler_paths) {
       stitch_loops(&euler_path);
     }
 
     // Anything remaining is loops on islands.  Make all those paths, too.
-    for (const auto& vertex : paths.get_all_start_vertices()) {
+    for (const auto& vertex : paths.get_all_vertices()) {
       std::pair<linestring_t, bool> new_path({vertex}, true);
       while (insert_one_path(&new_path, new_path.first.size()-1) > 0) {
         // Keep going.
@@ -257,43 +421,64 @@ class eulerian_paths {
     // edges, even after using the bidi edges.
     auto out_edges = paths.get_start_vertex_to_unvisited_path_index().count(vertex);
     auto in_edges = paths.get_end_vertex_to_unvisited_path_index().count(vertex);
-    auto bidi_edges = paths.get_bidi_vertex_to_unvisited_path_index().count(vertex);
-    return must_start_helper(out_edges, in_edges, bidi_edges);
+    return out_edges > in_edges;
+  }
+
+  template <typename p_t>
+  double get_cosine_of_angle(const point_t& p0, const point_t& p1, const point_t& p2, identity<p_t>) {
+    auto delta_x10 = p0.x() - p1.x();
+    auto delta_y10 = p0.y() - p1.y();
+    auto delta_x12 = p2.x() - p1.x();
+    auto delta_y12 = p2.y() - p1.y();
+    auto length_product = sqrt((delta_x10*delta_x10 + delta_y10*delta_y10)) * sqrt((delta_x12*delta_x12 + delta_y12*delta_y12));
+    auto dot_product = (delta_x10*delta_x12) + (delta_y10*delta_y12);
+    return dot_product/length_product;
+  }
+
+  double get_cosine_of_angle(const int& p0, const int& p1, const int& p2, identity<int>) {
+    double ret;
+    if (p0 == p1 || p1 == p2) {
+      ret = 0;  // Undefined.
+    } else if (p0 < p1 && p1 < p2) {
+      ret = -1; // Straight line.
+    } else if (p0 > p1 && p1 > p2) {
+      ret = -1; // Straight line.
+    } else {
+      ret = 1; // Angle 0
+    }
+    return ret;
+  }
+
+  template <typename p_t>
+  double get_cosine_of_angle(const p_t& p0, const p_t& p1, const p_t& p2) {
+    return get_cosine_of_angle(p0, p1, p2, identity<p_t>());
   }
 
   // Higher score is better.
   template <typename p_t>
   double path_score(const linestring_t& path_so_far,
                     const size_t where_to_start,
-                    const std::pair<point_t, std::pair<size_t, Side>>& option,
+                    const std::pair<point_t, path_and_direction>& option,
                     identity<p_t>) {
-    if (where_to_start < 1 || paths.get_path(option.second.first).first.size() < 2) {
+    if (where_to_start < 1 || paths.get_path_size(option.second) < 2) {
       // Doesn't matter, pick any.
       return 0;
     }
     auto p0 = path_so_far[where_to_start-1];
     auto p1 = path_so_far[where_to_start];
-    auto p2 = paths.get_path(option.second.first).first[1];
-    if (option.second.second == Side::back) {
-      // This must be reversed.
-      p2 = paths.get_path(option.second.first).first[paths.get_path(option.second.first).first.size()-2];
-    }
+    // If the back of the path is what is connected to this vertex then we want to attach in reverse.
+    auto p2 = paths.get_point(option.second, 1);
 
     // cos(theta) = (a dot b)/(|a|*|b|)
     // We don't need to take the cosine because it is decreasing over
     // the range of theta that we care about, so they are comparable.
-    auto delta_x10 = p0.x() - p1.x();
-    auto delta_y10 = p0.y() - p1.y();
-    auto delta_x12 = p2.x() - p1.x();
-    auto delta_y12 = p2.y() - p1.y();
-    auto length_product = sqrt((delta_x10*delta_x10 + delta_y10*delta_y10) * (delta_x12*delta_x12 + delta_y12*delta_y12));
-    auto dot_product = (delta_x10*delta_x12) + (delta_y10*delta_y12);
-    return -dot_product/length_product;
+    // Lowest is best.
+    return get_cosine_of_angle(p0, p1, p2);
   }
 
   double path_score(const linestring_t&,
                     const size_t,
-                    const std::pair<point_t, std::pair<size_t, Side>>&,
+                    const std::pair<point_t, path_and_direction>&,
                     identity<int>) {
     return 0;
   }
@@ -301,23 +486,23 @@ class eulerian_paths {
   template <typename p_t>
   double path_score(const linestring_t& path_so_far,
                     const size_t where_to_start,
-                    const std::pair<point_t, std::pair<size_t, Side>>& option) {
+                    const std::pair<point_t, path_and_direction>& option) {
     return path_score(path_so_far, where_to_start, option, identity<p_t>());
   }
 
   // Pick the best path to continue on given the path_so_far and a
   // range of options.  The range must have at least one element in
   // it.
-  typename std::multimap<point_t, std::pair<size_t, Side>>::const_iterator select_path(
+  typename std::multimap<point_t, path_and_direction>::const_iterator select_path(
       const linestring_t& path_so_far,
       const size_t where_to_start,
-      const std::pair<typename std::multimap<point_t, std::pair<size_t, Side>>::const_iterator,
-                      typename std::multimap<point_t, std::pair<size_t, Side>>::const_iterator>& options) {
+      const std::pair<typename std::multimap<point_t, path_and_direction>::const_iterator,
+                      typename std::multimap<point_t, path_and_direction>::const_iterator>& options) {
     auto best = options.first;
     double best_score = path_score<point_t>(path_so_far, where_to_start, *best);
     for (auto current = options.first; current != options.second; current++) {
       double current_score = path_score<point_t>(path_so_far, where_to_start, *current);
-      if (current_score > best_score) {
+      if (current_score < best_score) {
         best = current;
         best_score = current_score;
       }
@@ -327,32 +512,22 @@ class eulerian_paths {
 
   // Given a point, make a path from that point as long as possible
   // until a dead end.  Assume that point itself is already in the
-  // list.  Return the number of elements inserted.
+  // list.  Return the number of elements inserted.  Only call this
+  // when there are no bidi edges.
   size_t insert_one_path(std::pair<linestring_t, bool>* new_path, const size_t where_to_start) {
     // Find an unvisited path that leads from point.  Prefer out edges to bidi
     // because we may need to save the bidi edges to later be in edges.
     auto vertex_and_path_range = paths.get_start_vertex_to_unvisited_path_index().equal_range(new_path->first.at(where_to_start));
     if (vertex_and_path_range.first == vertex_and_path_range.second) {
-      vertex_and_path_range = paths.get_bidi_vertex_to_unvisited_path_index().equal_range(new_path->first.at(where_to_start));
-      if (vertex_and_path_range.first == vertex_and_path_range.second) {
-        // No more paths to follow.
-        return 0;
-      }
+      // No more paths to follow.
+      return 0;
     }
-    auto vertex_and_path_index = select_path(new_path->first, where_to_start, vertex_and_path_range);
-    size_t path_index = vertex_and_path_index->second.first;
-    Side side = vertex_and_path_index->second.second;
-    const auto& path = paths.get_path(path_index).first;
-    if (side == Side::front) {
-      // Append this path in the forward direction.
-      new_path->first.insert(new_path->first.begin() + where_to_start + 1, path.cbegin()+1, path.cend());
-    } else {
-      // Append this path in the reverse direction.
-      new_path->first.insert(new_path->first.begin() + where_to_start + 1, path.crbegin()+1, path.crend());
-    }
-    paths.remove_path(path_index);
-    new_path->second = new_path->second && paths.get_path(path_index).second;
-    return path.size() - 1;
+    auto vertex_and_path_index = *select_path(new_path->first, where_to_start, vertex_and_path_range);
+    new_path->first.insert(new_path->first.begin() + where_to_start + 1, paths.get_cbegin(vertex_and_path_index.second) + 1, paths.get_cend(vertex_and_path_index.second));
+    paths.remove_path(vertex_and_path_index.second);
+    // Update the reversability of the new path.
+    new_path->second = new_path->second && paths.get_path_reversible(vertex_and_path_index.second);
+    return paths.get_path_size(vertex_and_path_index.second) - 1;
   }
 
   // Only call this when there are no vertices with uneven edge count.  That
@@ -368,15 +543,17 @@ class eulerian_paths {
     // Use a counter and not a pointer because the list will grow and pointers
     // may be invalidated.
     for (size_t i = 0; i < euler_path->first.size(); i++) {
-      // Make a path from here.  We don't need the first element, it's already in our path.
-      auto j = i;
-      while (true) {
-        auto elements_inserted = insert_one_path(euler_path, j);
-        if (elements_inserted == 0) {
+      // Make a path from here, as long as possible.  Because we only have loops left in the
+      // paths, the path will end where it started.
+      auto insert_at = i;
+      do {
+        auto const insert_length = insert_one_path(euler_path, insert_at);
+        if (insert_length == 0) {
           break;
         }
-        j += elements_inserted;
-      }
+        // Keep going.  It's sure to end where we started because it is a loop.
+        insert_at += insert_length;
+      } while (true);
     }
   }
   path_manager<point_t, linestring_t> paths;
@@ -425,11 +602,19 @@ bool check_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& befo
 }
 
 template
-bool check_eulerian_paths<point_type>(const std::vector<std::pair<linestring_type, bool>>& before,
-                                      const std::vector<std::pair<linestring_type, bool>>& after);
+bool check_eulerian_paths<point_type_fp, linestring_type_fp>(
+    const std::vector<std::pair<linestring_type_fp, bool>>& before,
+    const std::vector<std::pair<linestring_type_fp, bool>>& after);
+
 template
-bool check_eulerian_paths<int>(const std::vector<std::pair<std::vector<int>, bool>>& before,
-                               const std::vector<std::pair<std::vector<int>, bool>>& after);
+bool check_eulerian_paths<point_type, linestring_type>(
+    const std::vector<std::pair<linestring_type, bool>>& before,
+    const std::vector<std::pair<linestring_type, bool>>& after);
+
+template
+bool check_eulerian_paths<int, std::vector<int>>(
+    const std::vector<std::pair<std::vector<int>, bool>>& before,
+    const std::vector<std::pair<std::vector<int>, bool>>& after);
 
 // Returns a minimal number of toolpaths that include all the milling in the
 // oroginal toolpaths.  Each path is traversed once.  Each path has a bool
@@ -443,9 +628,16 @@ std::vector<std::pair<linestring_t, bool>> get_eulerian_paths(const std::vector<
 }
 
 template
-std::vector<std::pair<std::vector<int>, bool>> get_eulerian_paths<int>(const std::vector<std::pair<std::vector<int>, bool>>& paths);
+std::vector<std::pair<std::vector<int>, bool>> get_eulerian_paths<int, std::vector<int>>(
+    const std::vector<std::pair<std::vector<int>, bool>>& paths);
+
 template
-std::vector<std::pair<linestring_type, bool>> get_eulerian_paths<point_type>(const std::vector<std::pair<linestring_type, bool>>& paths);
+std::vector<std::pair<linestring_type_fp, bool>> get_eulerian_paths<point_type_fp, linestring_type_fp>(
+    const std::vector<std::pair<linestring_type_fp, bool>>& paths);
+
+template
+std::vector<std::pair<linestring_type, bool>> get_eulerian_paths<point_type, linestring_type>(
+    const std::vector<std::pair<linestring_type, bool>>& paths);
 
 // This calls segmentize and then get_eulerian_paths.  If unique is
 // true, remove repeated segments.
