@@ -7,12 +7,13 @@
 
 namespace eulerian_paths {
 
-bool must_start_helper(size_t out_edges, size_t in_edges, size_t bidi_edges);
-
 template <typename point_t, typename linestring_t>
 bool check_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& before,
                           const std::vector<std::pair<linestring_t, bool>>& after);
 
+// Returns a minimal number of toolpaths that include all the milling in the
+// oroginal toolpaths.  Each path is traversed once.  Each path has a bool
+// indicating if the path is reversible.
 template <typename point_t, typename linestring_t>
 std::vector<std::pair<linestring_t, bool>> get_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& paths);
 
