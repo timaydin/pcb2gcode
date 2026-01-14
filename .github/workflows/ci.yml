@@ -348,11 +348,18 @@ jobs:
       run: make -j ${NUM_CPUS} check-valgrind || (cat mem-test-suite.log && false)
 
     - name: Run integration tests
-      if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os == 'ubuntu'
+      if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os != 'windows'
       run: |
         sudo apt-get install python3-setuptools
         pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest in_place
-        ./integration_tests.py -j ${NUM_CPUS}
+        /usr/bin/python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode" -j ${NUM_CPUS}
+    # Skip the Windows integration test because there are tiny discrepencies from expected outputs.
+    #- name: Run integration tests on Windows
+    #  if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os == 'windows'
+    #  run: |
+    #    pacman -S --noconfirm mingw-w64-x86_64-python-pip
+    #    pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest in_place
+    #    python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode.exe" -j ${NUM_CPUS}
     - name: Gather coverage
       if: matrix.code_coverage
       run: |
@@ -480,7 +487,7 @@ jobs:
       if: matrix.code_coverage
       uses: actions/upload-artifact@v4
       with:
-        name: version
+        name: version-${{ steps.sanitize-key.outputs.key }}.txt
         path: version.txt
     - name: Save cache
       uses: actions/cache/save@v5
