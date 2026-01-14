@@ -212,6 +212,7 @@ jobs:
           popd
           popd
         fi
+        geos-config --version
     - name: coverage specific setup
       if: matrix.os == 'ubuntu' && matrix.code_coverage
       run: |
@@ -224,12 +225,12 @@ jobs:
         lcov --version
     - name: Install gerbv
       run: |
-        echo "gerbv/main commit sha is $(git ls-remote https://github.com/gerbv/gerbv.git heads/main)"
-        if ! gerbv --version || ! test -f ${LOCAL_INSTALL_PATH}/bin/gerbv.version || ! grep -qx "$(git ls-remote https://github.com/gerbv/gerbv.git heads/main)" ${LOCAL_INSTALL_PATH}/bin/gerbv.version; then
-          git ls-remote https://github.com/gerbv/gerbv.git heads/main > ${LOCAL_INSTALL_PATH}/bin/gerbv.version
+        echo "gerbv/main commit sha is $(git ls-remote https://github.com/eyal0/gerbv.git heads/main)"
+        if ! gerbv --version || ! test -f ${LOCAL_INSTALL_PATH}/bin/gerbv.version || ! grep -qx "$(git ls-remote https://github.com/eyal0/gerbv.git heads/main)" ${LOCAL_INSTALL_PATH}/bin/gerbv.version; then
+          git ls-remote https://github.com/eyal0/gerbv.git heads/main > ${LOCAL_INSTALL_PATH}/bin/gerbv.version
           echo "UPDATE_CACHE=true" >> $GITHUB_ENV
           pushd ~
-          git clone --depth=1 --branch=main https://github.com/gerbv/gerbv.git
+          git clone --depth=1 --branch=main https://github.com/eyal0/gerbv.git
           pushd gerbv
           sh autogen.sh
           ./configure CPPFLAGS=$CPPFLAGS_gerbv --disable-update-desktop-database --prefix=${LOCAL_INSTALL_PATH}
@@ -238,6 +239,7 @@ jobs:
           popd
           popd
         fi
+        gerbv --version
     - name: Install valgrind
       if: matrix.os == 'ubuntu'
       run: |
@@ -254,6 +256,7 @@ jobs:
           popd
           popd
         fi
+        valgrind --version
     - name: Install parallel
       if: matrix.os != 'windows'
       run: |
@@ -274,6 +277,7 @@ jobs:
           popd
           popd
         fi
+        parallel --version
     - name: Finalize setup
       run: |
         hash -r
