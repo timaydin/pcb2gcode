@@ -34,9 +34,7 @@ jobs:
             boost: '1_66'
         include:
           - os: ubuntu
-            boost: latest
-            compiler: g++
-            geos: latest
+            geos: '3.13.1'
             code_coverage: "--enable-code-coverage"
           - os: ubuntu
             shell: '/usr/bin/bash -l -e -o pipefail {0}'
