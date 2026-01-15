@@ -34,10 +34,9 @@ jobs:
             boost: '1_66'
         include:
           - os: ubuntu
-            boost: latest
-            compiler: g++
-            geos: latest
+            geos: '3.13.1'
             code_coverage: "--enable-code-coverage"
+            compiler: 'g++-10'  # Only code coverage with g++-10 because latest g++ coverage is slow.
           - os: ubuntu
             shell: '/usr/bin/bash -l -e -o pipefail {0}'
             local_install_path: '$HOME/.local'
@@ -90,7 +89,7 @@ jobs:
     - name: Windows specific setup
       if: matrix.os == 'windows'
       run: |
-        echo "export NUM_CPUS='$((`nproc --all`))'" >> ~/.bash_profile
+        echo "export NUM_CPUS='$((`nproc --all` * 4))'" >> ~/.bash_profile
     - name: Ubuntu specific setup
       if: matrix.os == 'ubuntu'
       run: |
@@ -337,24 +336,31 @@ jobs:
       continue-on-error: true
       run: lcov --directory . -z
     - name: Run unit tests
-      if: matrix.os != 'ubuntu'
+      if: ! (matrix.os == 'ubuntu' && ! matrix.code_coverage)
       env:
         VERBOSE: 1
         SKIP_GERBERIMPORTER_TESTS_PNG: 1
       run: make -j ${NUM_CPUS} check || (cat test-suite.log && false)
     - name: Run unit tests with valgrind
-      if: matrix.os == 'ubuntu'
+      if: matrix.os == 'ubuntu' && ! matrix.code_coverage
       env:
         VERBOSE: 1
         SKIP_GERBERIMPORTER_TESTS_PNG: 1
       run: make -j ${NUM_CPUS} check-valgrind || (cat mem-test-suite.log && false)
 
     - name: Run integration tests
-      if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os == 'ubuntu'
+      if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os != 'windows'
       run: |
         sudo apt-get install python3-setuptools
         pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest in_place
-        ./integration_tests.py -j ${NUM_CPUS}
+        /usr/bin/python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode" -j ${NUM_CPUS}
+    # Skip the Windows integration test because there are tiny discrepencies from expected outputs.
+    #- name: Run integration tests on Windows
+    #  if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os == 'windows'
+    #  run: |
+    #    pacman -S --noconfirm mingw-w64-x86_64-python-pip
+    #    pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest in_place
+    #    python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode.exe" -j ${NUM_CPUS}
     - name: Gather coverage
       if: matrix.code_coverage
       run: |
@@ -482,7 +488,7 @@ jobs:
       if: matrix.code_coverage
       uses: actions/upload-artifact@v4
       with:
-        name: version
+        name: version-${{ steps.sanitize-key.outputs.key }}.txt
         path: version.txt
     - name: Save cache
       uses: actions/cache/save@v5
