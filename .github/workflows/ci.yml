@@ -36,6 +36,7 @@ jobs:
           - os: ubuntu
             geos: '3.13.1'
             code_coverage: "--enable-code-coverage"
+            quick: "--quick"
             compiler: 'g++-10'  # Only code coverage with g++-10 because latest g++ coverage is slow.
           - os: ubuntu
             shell: '/usr/bin/bash -l -e -o pipefail {0}'
@@ -353,19 +354,19 @@ jobs:
       run: |
         sudo apt-get install python3-setuptools
         pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest in_place
-        /usr/bin/python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode" -j ${NUM_CPUS}
+        /usr/bin/python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode" -j ${NUM_CPUS} ${{ matrix.quick }}
     # Skip the Windows integration test because there are tiny discrepencies from expected outputs.
     #- name: Run integration tests on Windows
     #  if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os == 'windows'
     #  run: |
     #    pacman -S --noconfirm mingw-w64-x86_64-python-pip
     #    pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest in_place
-    #    python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode.exe" -j ${NUM_CPUS}
+    #    python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode.exe" -j ${NUM_CPUS} ${{ matrix.quick }}
     - name: Gather coverage
       if: matrix.code_coverage
       run: |
-        lcov --rc lcov_branch_coverage=1 -rc lcov_function_coverage --directory . --capture --no-external --output-file "pcb2gcode-lcov.info"
-        lcov --rc lcov_branch_coverage=1 -rc lcov_function_coverage -r "pcb2gcode-lcov.info" '*_tests.cpp' -o "pcb2gcode-lcov.info"
+        lcov --rc lcov_branch_coverage=1 --rc lcov_function_coverage=1 --directory . --capture --no-external --output-file "pcb2gcode-lcov.info"
+        lcov --rc lcov_branch_coverage=1 --rc lcov_function_coverage=1 -r "pcb2gcode-lcov.info" '*_tests.cpp' -o "pcb2gcode-lcov.info"
     - name: Upload coverage artifact
       if: matrix.code_coverage
       uses: actions/upload-artifact@v4
