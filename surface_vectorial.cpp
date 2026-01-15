@@ -1065,7 +1065,19 @@ vector<pair<coordinate_type_fp, multi_linestring_type_fp>> Surface_vectorial::ge
     vector<vector<pair<linestring_type_fp, bool>>> new_trace_toolpaths(trace_count);
 
     for (size_t trace_index = 0; trace_index < trace_count; trace_index++) {
-      const auto new_trace_toolpath = get_single_toolpath(cutter, trace_index, mirror, cutter->tool_diameter, 0, multi_polygon_type_fp(), path_finding_surface);
+      auto new_trace_toolpath = get_single_toolpath(cutter, trace_index, mirror, cutter->tool_diameter, 0, multi_polygon_type_fp(), path_finding_surface);
+      if (invert_gerbers) {
+        auto shrunk_bounding_box = bg::return_buffer<box_type_fp>(bounding_box, -cutter->tolerance);
+        vector<pair<linestring_type_fp, bool>> temp;
+        for (const auto& ls_and_allow_reversal : new_trace_toolpath) {
+          multi_linestring_type_fp temp_mls;
+          temp_mls = ls_and_allow_reversal.first & shrunk_bounding_box;
+          for (const auto& ls : temp_mls) {
+            temp.push_back(make_pair(ls, ls_and_allow_reversal.second));
+          }
+        }
+        new_trace_toolpath.swap(temp);
+      }
       new_trace_toolpaths[trace_index] = new_trace_toolpath;
     }
     write_svgs("", cutter->tool_diameter, new_trace_toolpaths, mill->tolerance, false);
