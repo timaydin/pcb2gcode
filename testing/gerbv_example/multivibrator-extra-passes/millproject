@@ -26,3 +26,5 @@ zcut=-0.13mm
 fill-outline=true
 zsafe=0.08
 zchange=1.0
+spindown-time=5
+spinup-time=3

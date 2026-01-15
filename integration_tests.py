@@ -30,159 +30,159 @@ try:
 except:
   concurrencytest_available = False
 
-TestCase = collections.namedtuple("TestCase", ["name", "input_path", "args", "exit_code"])
+TestCase = collections.namedtuple("TestCase", ["name", "input_path", "args", "exit_code", "quick"])
 
 EXAMPLES_PATH = "testing/gerbv_example"
 BROKEN_EXAMPLES_PATH = "testing/broken_examples"
-TEST_CASES = ([TestCase(x, os.path.join(EXAMPLES_PATH, x), [], 0)
-              for x in [
-                  "am-test",
-                  "am-test-counterclockwise",
-                  "am-test-extended",
-                  "am-test-millinfeed",
-                  "am-test-voronoi",
-                  "am-test-voronoi-extra-passes",
-                  "am-test-voronoi-front",
-                  "am-test-voronoi-wide-extra-passes",
-                  "backtrack",
-                  "backtrack_0",
-                  "D1MiniGSR",
-                  "Easy-SDR_HF_Upconverter_SMD_Gerbers",
-                  "edge-cuts-broken-loop",
-                  "edge-cuts-inside-cuts",
-                  "example_board_new_default",
-                  "example_board_new_mirror_x",
-                  "example_board_new_mirror_y",
-                  "example_board_new_mirror_y_drill_back",
-                  "example_board_new_zero_start",
-                  "example_board_al_custom",
-                  "example_board_al_custom_tiled",
-                  "example_board_al_linuxcnc",
-                  "example_board_al_linuxcnc_tiled",
-                  "example_board_al_mach3",
-                  "example_board_al_mach3_tiled",
-                  "example_board_al_mach4",
-                  "example_board_al_mach4_tiled",
-                  "invert_gerbers",
-                  "invert_gerbers_fill",
-                  "KeyboardControllerM102",
-                  "KNoT-Gateway Mini Starter Board",
-                  "KNoT_Thing_Starter_Board",
-                  "lift-mill",
-                  "mill_masking",
-                  "mill_masking_voronoi",
-                  "milldrilldiatest",
-                  "milldrilldiatest_units",
-                  "multivibrator",
-                  "multivibrator-basename",
-                  "multivibrator-clockwise",
-                  "multivibrator-contentions",
-                  "multivibrator-extra-passes",
-                  "multivibrator-extra-passes-big",
-                  "multivibrator-extra-passes-two-isolators",
-                  "multivibrator-extra-passes-two-isolators-tiles",
-                  "multivibrator-extra-passes-two-isolators-tiles-al",
-                  "multivibrator-extra-passes-voronoi",
-                  "multivibrator-identical-isolators",
-                  "multivibrator-no-tsp-2opt",
-                  "multivibrator-no-zbridges",
-                  "multivibrator-two-isolators",
-                  "multivibrator_backtrack",
-                  "multivibrator_milldrill_nom6",
-                  "multivibrator_no_export",
-                  "multivibrator_no_export_milldrill",
-                  "multivibrator_no_optimise",
-                  "multivibrator_no_zero_start",
-                  "multivibrator_nom6",
-                  "multivibrator_pre_post_milling_gcode",
-                  "multivibrator_xy_offset",
-                  "multivibrator_xy_offset_zero_start",
-                  "multivibrator-zchange-absolute",
-                  "multi_outline",
-                  "null_drill",
-                  "overlapping_edge_cuts",
-                  "project-controller",
-                  "Rotary-Encoder-Breakout",
-                  "round_pcb_3",
-                  "round_pcb_4",
-                  "round_pcb_5",
-                  "shaped_pcb",
-                  "sharp_corner",
-                  "sharp_corner_2",
-                  "sharp_corner_2_offset",
-                  "sharp_corner_big_isolation_width",
-                  "silk",
-                  "silk-lines",
-                  "slots-milldrill",
-                  "slots-milldrill-metric",
-                  "slots-with-drill",
-                  "slots-with-drill-and-milldrill",
-                  "slots-with-drill-metric",
-                  "slots-with-drills-available",
+TEST_CASES = ([TestCase(path_name, os.path.join(EXAMPLES_PATH, path_name), [], 0, quick)
+              for path_name, quick in [
+                  ("am-test", True),
+                  ("am-test-counterclockwise", True),
+                  ("am-test-extended", True),
+                  ("am-test-millinfeed", True),
+                  ("am-test-voronoi", True),
+                  ("am-test-voronoi-extra-passes", True),
+                  ("am-test-voronoi-front", True),
+                  ("am-test-voronoi-wide-extra-passes", True),
+                  ("backtrack", True),
+                  ("backtrack_0", True),
+                  ("D1MiniGSR", True),
+                  ("Easy-SDR_HF_Upconverter_SMD_Gerbers", False),  # Does not improve coverage.
+                  ("edge-cuts-broken-loop", True),
+                  ("edge-cuts-inside-cuts", True),
+                  ("example_board_new_default", True),
+                  ("example_board_new_mirror_x", True),
+                  ("example_board_new_mirror_y", True),
+                  ("example_board_new_mirror_y_drill_back", True),
+                  ("example_board_new_zero_start", True),
+                  ("example_board_al_custom", True),
+                  ("example_board_al_custom_tiled", True),
+                  ("example_board_al_linuxcnc", True),
+                  ("example_board_al_linuxcnc_tiled", True),
+                  ("example_board_al_mach3", True),
+                  ("example_board_al_mach3_tiled", True),
+                  ("example_board_al_mach4", True),
+                  ("example_board_al_mach4_tiled", True),
+                  ("invert_gerbers", True),
+                  ("invert_gerbers_fill", True),
+                  ("KeyboardControllerM102", True),
+                  ("KNoT-Gateway Mini Starter Board", False),  # Does not improve coverage.
+                  ("KNoT_Thing_Starter_Board", True),
+                  ("lift-mill", True),
+                  ("mill_masking", True),
+                  ("mill_masking_voronoi", True),
+                  ("milldrilldiatest", True),
+                  ("milldrilldiatest_units", True),
+                  ("multivibrator", True),
+                  ("multivibrator-basename", True),
+                  ("multivibrator-clockwise", True),
+                  ("multivibrator-contentions", False),  # Does not improve coverage.
+                  ("multivibrator-extra-passes", True),
+                  ("multivibrator-extra-passes-big", False),  # Does not improve coverage.
+                  ("multivibrator-extra-passes-two-isolators", True),
+                  ("multivibrator-extra-passes-two-isolators-tiles", True),
+                  ("multivibrator-extra-passes-two-isolators-tiles-al", True),
+                  ("multivibrator-extra-passes-voronoi", True),
+                  ("multivibrator-identical-isolators", True),
+                  ("multivibrator-no-tsp-2opt", True),
+                  ("multivibrator-no-zbridges", True),
+                  ("multivibrator-two-isolators", True),
+                  ("multivibrator_backtrack", True),
+                  ("multivibrator_milldrill_nom6", True),
+                  ("multivibrator_no_export", True),
+                  ("multivibrator_no_export_milldrill", True),
+                  ("multivibrator_no_optimise", False),  # Does not improve coverage.
+                  ("multivibrator_no_zero_start", True),
+                  ("multivibrator_nom6", True),
+                  ("multivibrator_pre_post_milling_gcode", True),
+                  ("multivibrator_xy_offset", True),
+                  ("multivibrator_xy_offset_zero_start", True),
+                  ("multivibrator-zchange-absolute", True),
+                  ("multi_outline", True),
+                  ("null_drill", True),
+                  ("overlapping_edge_cuts", True),
+                  ("project-controller", False),  # Does not improve coverage.
+                  ("Rotary-Encoder-Breakout", True),
+                  ("round_pcb_3", True),
+                  ("round_pcb_4", True),
+                  ("round_pcb_5", True),
+                  ("shaped_pcb", True),
+                  ("sharp_corner", True),
+                  ("sharp_corner_2", True),
+                  ("sharp_corner_2_offset", True),
+                  ("sharp_corner_big_isolation_width", True),
+                  ("silk", True),
+                  ("silk-lines", True),
+                  ("slots-milldrill", True),
+                  ("slots-milldrill-metric", True),
+                  ("slots-with-drill", True),
+                  ("slots-with-drill-and-milldrill", True),
+                  ("slots-with-drill-metric", True),
+                  ("slots-with-drills-available", True),
               ]] +
               [TestCase("split config csv", os.path.join(BROKEN_EXAMPLES_PATH, "split_config"),
-                        ["--config=millproject,millproject2"], 0)] +
+                        ["--config=millproject,millproject2"], 0, True)] +
               [TestCase("bad output dir " + x, os.path.join(EXAMPLES_PATH, x),
-                        ["--output-dir=/tmp/nonexistantpath"], 1)
+                        ["--output-dir=/tmp/nonexistantpath"], 1, True)
                for x in ("multivibrator", "slots-with-drill", "slots-milldrill")] +
               [TestCase("split config", os.path.join(BROKEN_EXAMPLES_PATH, "split_config"),
-                        ["--config=millproject", "--config=millproject2"], 0)] +
+                        ["--config=millproject", "--config=millproject2"], 0, True)] +
               [TestCase("split config", os.path.join(BROKEN_EXAMPLES_PATH, "split_config"),
-                        [], 14)] +
+                        [], 14, True)] +
               [TestCase("multivibrator_bad_" + x,
                         os.path.join(EXAMPLES_PATH, "multivibrator"),
-                        ["--" + x + "=non_existant_file"], 100)
+                        ["--" + x + "=non_existant_file"], 100, True)
                for x in ("front", "back", "outline", "drill")] +
               [TestCase("broken_" + x,
                         os.path.join(BROKEN_EXAMPLES_PATH, x),
-                        [], 100)
+                        [], 100, True)
                for x in ("invalid-config",
                          )
               ] +
               [TestCase("version",
                         os.path.join(EXAMPLES_PATH),
                         ["--version"],
-                        0)] +
+                        0, True)] +
               [TestCase("help",
                         os.path.join(EXAMPLES_PATH),
                         ["--help"],
-                        0)] +
+                        0, True)] +
               [TestCase("tsp_2opt_with_millfeedirection",
                         os.path.join(EXAMPLES_PATH, "am-test"),
                         ["--tsp-2opt", "--mill-feed-direction=climb"],
-                        100)] +
+                        100, True)] +
               [TestCase("g64_and_tolerance",
                         os.path.join(EXAMPLES_PATH, "am-test"),
                         ["--g64=5", "--tolerance=123"],
-                        49)] +
+                        49, True)] +
               [TestCase("negative_spinup",
                         os.path.join(EXAMPLES_PATH, "am-test"),
                         ["--spinup-time=-5"],
-                        52)] +
+                        52, True)] +
               [TestCase("zero_millinfeed",
                         os.path.join(EXAMPLES_PATH, "am-test"),
                         ["--mill-infeed=0"],
-                        55)] +
+                        55, True)] +
               [TestCase("ignore warnings",
                         os.path.join(BROKEN_EXAMPLES_PATH, "invalid-config"),
                         ["--ignore-warnings"],
-                        0)] +
+                        0, True)] +
               [TestCase("provided config",
                         os.path.join(EXAMPLES_PATH, "am-test"),
                         ["--config=millproject"],
-                        0)] +
+                        0, True)] +
               [TestCase("missing config",
                         os.path.join(EXAMPLES_PATH, "am-test"),
                         ["--config=millproject_file_does_not_exist"],
-                        100)] +
+                        100, True)] +
               [TestCase("invalid_millfeedirection",
                         os.path.join(EXAMPLES_PATH),
                         ["--mill-feed-direction=invalid_value"],
-                        101)] +
+                        101, True)] +
               [TestCase("zchange_below_zdrill",
                         os.path.join(EXAMPLES_PATH, "multivibrator-zchange-absolute"),
                         ["--zchange-absolute=false"],
-                        19)]
+                        19, True)]
 )
 
 def colored(text, **color):
@@ -220,7 +220,7 @@ class IntegrationTests(unittest.TestCase):
             else:
               svg_file.write(line)
 
-  def pcb2gcode_one_directory(self, input_path, pcb2gcode_binary, args=None, exit_code=0):
+  def pcb2gcode_one_directory(self, input_path, pcb2gcode_binary, args, exit_code):
     """Run pcb2gcode once in one directory.
 
     Current working directory remains unchanged at the end.
@@ -229,7 +229,13 @@ class IntegrationTests(unittest.TestCase):
     Returns the path to the output files created.
     """
     cwd = os.getcwd()  # Save this for later restoring the current working directory
-    actual_output_path = tempfile.mkdtemp()
+    # Sanitize input_path to remove or replace characters not allowed in path names
+    import re
+    def sanitize_for_path(s):
+        # Replace anything not alphanumeric, dash, or underscore with underscore
+        return re.sub(r'[^A-Za-z0-9_\-]', '_', s)
+    sanitized = sanitize_for_path(input_path)
+    actual_output_path = tempfile.mkdtemp(f"-{sanitized}")
     os.chdir(input_path)
     try:
       cmd = [pcb2gcode_binary]
@@ -305,7 +311,7 @@ class IntegrationTests(unittest.TestCase):
         all_diffs += difflib.unified_diff(data0, data1, '"' + os.path.join(left_prefix, f) + '"', '"' + os.path.join(right_prefix, f) + '"')
     return ''.join(all_diffs)
 
-  def run_one_directory(self, input_path, pcb2gcode_binary, expected_output_path, test_prefix, args=[], exit_code=0):
+  def run_one_directory(self, input_path, pcb2gcode_binary, expected_output_path, test_prefix, args, exit_code):
     """Run pcb2gcode on a directory and return the diff as a string.
 
     Returns an empty string if there is no mismatch.
@@ -350,6 +356,8 @@ if __name__ == '__main__':
                       help='regex of tests to run')
   parser.add_argument('--pcb2gcode-binary', type=str, default="",
                       help='path to pcb2gcode binary to run.  The tests are expected to be in subdirectories of the directory containing the binary.')
+  parser.add_argument('--quick', action='store_true', default=False,
+                      help='only run quick tests')
   args = parser.parse_args()
   if args.tests:
     TEST_CASES = [t for t in TEST_CASES if re.search(args.tests, t.name)]
@@ -361,6 +369,8 @@ if __name__ == '__main__':
     test_method.__name__ = 'test_' + t.name
     test_method.__doc__ = str(test_case)
   for test_case in TEST_CASES:
+    if args.quick and not test_case.quick:
+      continue
     add_test_case(test_case)
   if args.fix:
     print("Generating expected outputs...")

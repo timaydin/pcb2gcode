@@ -33,3 +33,4 @@ zchange=1.0
 mill-feed-direction=clockwise
 eulerian-paths=true
 tsp-2opt=false
+spinup-time=3
