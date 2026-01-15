@@ -335,13 +335,13 @@ jobs:
       continue-on-error: true
       run: lcov --directory . -z
     - name: Run unit tests
-      if: matrix.os != 'ubuntu'
+      if: ! (matrix.os == 'ubuntu' && ! matrix.code_coverage)
       env:
         VERBOSE: 1
         SKIP_GERBERIMPORTER_TESTS_PNG: 1
       run: make -j ${NUM_CPUS} check || (cat test-suite.log && false)
     - name: Run unit tests with valgrind
-      if: matrix.os == 'ubuntu'
+      if: matrix.os == 'ubuntu' && ! matrix.code_coverage
       env:
         VERBOSE: 1
         SKIP_GERBERIMPORTER_TESTS_PNG: 1
