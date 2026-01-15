@@ -6,7 +6,6 @@
 
 G94       (Inches per minute feed rate.)
 G20       (Units == INCHES.)
-G91.1     (Incremental arc distance mode.)
 G90       (Absolute coordinates.)
 G00 S12000     (RPM spindle speed.)
 
