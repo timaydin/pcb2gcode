@@ -36,6 +36,7 @@ jobs:
           - os: ubuntu
             geos: '3.13.1'
             code_coverage: "--enable-code-coverage"
+            compiler: 'g++-10'  # Only code coverage with g++-10 because latest g++ coverage is slow.
           - os: ubuntu
             shell: '/usr/bin/bash -l -e -o pipefail {0}'
             local_install_path: '$HOME/.local'
