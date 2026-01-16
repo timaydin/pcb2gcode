@@ -40,9 +40,11 @@ jobs:
           - os: ubuntu
             shell: '/usr/bin/bash -l -e -o pipefail {0}'
             local_install_path: '$HOME/.local'
+            ccache_path: '$HOME/.ccache'
           - os: windows
             shell: msys2 {0}
             local_install_path: '/d/a/pcb2gcode/.local'
+            ccache_path: '/d/a/pcb2gcode/.ccache'
           - compiler: 'g++-10'
             werror_flag: '-Werror'
           - compiler: 'g++'
@@ -71,6 +73,7 @@ jobs:
           mingw-w64-x86_64-cmake
           mingw-w64-x86_64-gcc
           mingw-w64-x86_64-gtkmm
+          mingw-w64-x86_64-ccache
           zip
     - name: Checkout pcb2gcode source
       uses: actions/checkout@v3
@@ -94,7 +97,7 @@ jobs:
       if: matrix.os == 'ubuntu'
       run: |
         sudo apt-get update
-        sudo apt-get install libgtkmm-2.4-dev moreutils autopoint libc6-dbg librsvg2-dev parallel
+        sudo apt-get install libgtkmm-2.4-dev moreutils autopoint libc6-dbg librsvg2-dev parallel ccache
         echo "export NUM_CPUS='$((`nproc --all` * 4))'" >> ~/.bash_profile
     - name: Set clang as default compiler
       if: matrix.compiler == 'clang++'
@@ -161,9 +164,18 @@ jobs:
         echo "key=$(echo '${{ matrix.os }}_${{ matrix.boost }}_${{ matrix.compiler }}_${{ matrix.geos }}' | sed 's/+/plus/g')" >> $GITHUB_OUTPUT
         if command -v cygpath; then
           echo "path=$(cygpath -w ${{ matrix.local_install_path }})" >> $GITHUB_OUTPUT
+          echo "ccache_path=$(cygpath -w ${{ matrix.ccache_path }})" >> $GITHUB_OUTPUT
         else
           echo "path=${{ matrix.local_install_path }}" >> $GITHUB_OUTPUT
+          echo "ccache_path=${{ matrix.ccache_path }}" >> $GITHUB_OUTPUT
         fi
+    - name: ccache config
+      run: |
+        ccache --version
+        ccache --show-config
+        ccache --set-config=cache_dir=${{ matrix.ccache_path }}
+        ccache -p
+        ccache -z
     - name: Restore cache
       uses: actions/cache/restore@v5
       with:
@@ -171,6 +183,13 @@ jobs:
         key: ${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: |
           ${{ steps.sanitize-key.outputs.key }}-
+    - name: Restore ccache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.sanitize-key.outputs.ccache_path }}
+        key: ccache-${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: |
+          ccache-${{ steps.sanitize-key.outputs.key }}-
     - name: Default don't update cache
       run: echo "UPDATE_CACHE=false" >> $GITHUB_ENV
     - name: Build and install boost
@@ -284,7 +303,7 @@ jobs:
       run: autoreconf -fvi
     - name: Configure pcb2gcode
       run: >-
-        ./configure pcb2gcode_CPPFLAGS_EXTRA=${{ matrix.werror_flag }}
+        CXX="`which ccache` ${CXX:-`which g++`}" ./configure pcb2gcode_CPPFLAGS_EXTRA=${{ matrix.werror_flag }}
         --disable-dependency-tracking
         --disable-silent-rules
         --enable-static-boost
@@ -496,6 +515,14 @@ jobs:
       with:
         path: ${{ steps.sanitize-key.outputs.path }}
         key: ${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+    - name: Save ccache
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ steps.sanitize-key.outputs.ccache_path }}
+        key: ccache-${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+    - name: ccache stats
+      run: |
+        ccache -s
 
   finalize-coverage:
     needs: [build-and-test]
