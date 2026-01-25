@@ -1,33 +1,46 @@
 In KiCad, set the drill file origin to the bottom left of the PCB. Also select
 "use drill/place file origin" during fabrication output creation.
 
-In Kicad, configure the alignment hole to be Through Hole and assign it to the net
-of the copper it is placed on. For example, GND. That way, there won't be any
-extra paths to provide clearance around them.
+In Kicad, configure the alignment hole to be Through Hole and assign it to the
+net of the copper it is placed on. For example, GND. That way, there won't be
+any extra paths to provide clearance around them.
 
-In Kocad, set the board edge clearance to zer0. This will prevent extra paths around
-the board.
+When generating the fabrication outputs, remove all copper pours (Ctrl-B). This
+is necessary to avoid unnecessary isolation milling on the board outline.
 
-In pcb2gcode, use a zwork = -0.2 and for a 45 degree spiral V cutter, use
-mill-diameters = 0.17
+In pcb2gcode, use a zwork = -0.05 and for a 30 degree, 0.1 mm tip diameter
+spiral V cutter, use mill-diameters = 0.15359
 
 Configure the CNC to not reduce stepper currents during idle (M906)
 
 When moving the spindle to the starting position (home), move it to the bottom
 left of the PCB to match what KiCad is displaying for the drill file origin.
 
-Give a unique diameter for the alignment hole (for example, 3.01 mm for a 3 mm hole).
- Specify this inside the millproject file. Also specify the hole depth
+Place the blank PCB such that the new alignment holes will not coincide with
+previous alignment holes on the sacrificial MDF plate.
+
+Give a unique diameter for the alignment hole (for example, 3.01 mm for a 3 mm
+hole). Specify this inside the millproject file. Also specify the hole depth
 
 alignment-hole-diameter = 3.01
-alignment-hole-depth = -5.5
+alignment-hole-depth = -7
 
-Make sure the zero-start flag is set in millproject. This is important to guarantee
-that the top and bottom layers match up.
+Make sure the zero-start flag is set in millproject. This is important to
+guarantee that the top and bottom layers match up.
 
 zero-start = 1
 
-First do "back" isolation milling, then do "milldrill" which also includes the alignment holes.
-Then turn the board around and do "front" isolation milling. And finally do "drill". This
-sequence is important, because each isolation milling is also doing surface mapping, and
-for this to work, there must be no holes drilled yet.
+The isolation milling needs to be done in the correct order. Check the output of
+pcb2gcode. If the output says that the PCB should be cut and drilled from the
+FRONT side, then isolation milling must start from the BACK side. That way, when
+processing of the BACK side is complete, the board can be turned around using
+the alignment pins and all remaining work can be done on the FRONT side.
+
+Let's assume here that pcb2gcode has indicated that PCB cut and drill is to be
+done on the FRONT side:
+
+First do "back" isolation milling, then do "milldrill" which also includes the
+alignment holes. Then turn the board around (in the left-right direction) and do
+"front" isolation milling. And finally do "drill". This sequence is important,
+because each isolation milling is also doing surface mapping, and for this to
+work, there must be no holes drilled yet.
