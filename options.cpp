@@ -230,7 +230,7 @@ options::options()
        ("nog81", po::value<bool>()->default_value(false)->implicit_value(true), "replace G81 with G0+G1")
        ("nom6", po::value<bool>()->default_value(false)->implicit_value(true), "do not emit M6 on tool changes")
        ("milldrill-output", po::value<string>()->default_value("milldrill.ngc"), "output file for milldrilling")
-       ("alignment-hole-diameter", po::value<Length>()->default_value(parse_unit<Length>("1.41421mm")), 
+       ("alignment-hole-diameter", po::value<Length>()->default_value(parse_unit<Length>("1.41421mm")),
         "diameter to detect as alignment holes (default: π = 1.41421mm)")
        ("alignment-hole-depth", po::value<Length>(), "drilling depth for alignment holes (if not set, uses --zdrill)");
    cfg_options.add(drilling_options);
@@ -341,6 +341,13 @@ options::options()
        ("tile-x", po::value<int>()->default_value(1), "number of tiling columns. Default value is 1")
        ("tile-y", po::value<int>()->default_value(1), "number of tiling rows. Default value is 1");
    cfg_options.add(cnc_options);
+
+   po::options_description duet_options("Duet hardware options");
+   duet_options.add_options()
+       ("autolevel-margin-x", po::value<Length>()->default_value(7), "horizontal margin to skip when auto levelling. This is intended to avoid alignment holes")
+       ("autolevel-margin-y", po::value<Length>()->default_value(7), "Vertical margin to skip when auto levelling. This is intended to avoid alignment holes")
+       ("autolevel-stepsize", po::value<Length>()->default_value(5), "Step size when auto levelling");
+   cfg_options.add(duet_options);
 
    cfg_options.add_options()
        ("ignore-warnings", po::value<bool>()->default_value(false)->implicit_value(true), "Ignore warnings")
@@ -691,6 +698,25 @@ static void check_cutting_parameters(po::variables_map const& vm) {
 /*
  */
 /******************************************************************************/
+static void check_duet_parameters(po::variables_map const& vm) {
+
+  if (vm["autolevel-margin-x"].as<Length>().asDouble() < 0) {
+    options::maybe_throw("Error: autolevel-margin-x can't be negative!", ERR_NEGATIVEALMARGINX);
+  }
+
+  if (vm["autolevel-margin-y"].as<Length>().asDouble() < 0) {
+    options::maybe_throw("Error: autolevel-margin-y can't be negative!", ERR_NEGATIVEALMARGINY);
+  }
+  
+  if (vm["autolevel-stepsize"].as<Length>().asDouble() < 0) {
+    options::maybe_throw("Error: autolevel-stepsize can't be negative!", ERR_NEGATIVEALSTEPSIZE);
+  }
+}
+
+/******************************************************************************/
+/*
+ */
+/******************************************************************************/
 void options::check_parameters()
 {
   po::variables_map const& vm = instance().vm;
@@ -700,6 +726,7 @@ void options::check_parameters()
     check_milling_parameters(vm);
     check_cutting_parameters(vm);
     check_drilling_parameters(vm);
+    check_duet_parameters(vm);
   } catch (std::runtime_error& re) {
     maybe_throw("Error: Invalid parameter. :-(", ERR_INVALIDPARAMETER);
   }

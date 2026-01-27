@@ -77,6 +77,9 @@ class Isolator: public RoutingMill {
   bool voronoi;
   bool preserve_thermal_reliefs;
   double isolation_width;
+  double autolevel_margin_x;
+  double autolevel_margin_y;
+  double autolevel_stepsize;
 };
 
 /******************************************************************************/

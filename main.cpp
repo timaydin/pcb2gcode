@@ -134,6 +134,10 @@ void do_pcb2gcode(int argc, const char* argv[]) {
             vm["post-milling-gcode"].as<vector<string>>(), "\n");
         isolator->spinup_time = vm["spinup-time"].as<Time>().asMillisecond(1);
         isolator->spindown_time = spindown_time;
+
+        isolator->autolevel_margin_x = vm["autolevel-margin-x"].as<Length>().asInch(unit);
+        isolator->autolevel_margin_y = vm["autolevel-margin-y"].as<Length>().asInch(unit);
+        isolator->autolevel_stepsize = vm["autolevel-stepsize"].as<Length>().asInch(unit);
     }
 
     auto cutter = make_shared<Cutter>();
