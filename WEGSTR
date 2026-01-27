@@ -8,6 +8,10 @@ any extra paths to provide clearance around them.
 When generating the fabrication outputs, remove all copper pours (Ctrl-B). This
 is necessary to avoid unnecessary isolation milling on the board outline.
 
+Also, in the fabrication output generation dialog box, uncheck the box that says
+"Use extended X2 format (recommended). This will prevent pcb2gcode from spitting
+out lots of warnings like "Unknown RS-274X extension found ..."
+
 In pcb2gcode, use a zwork = -0.05 and for a 30 degree, 0.1 mm tip diameter
 spiral V cutter, use mill-diameters = 0.15359
 
