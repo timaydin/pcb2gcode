@@ -318,12 +318,13 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
            << "M5      (Spindle stop.)\n"
            << "G04 P" << driller->spindown_time << "\n"
            << "M291 P\"Change tool bit to drill size "
-           << drill_to_string(bit)
-           << "\""
-           << " S2\n"
-           << "M292      (Acknowledge blocking message.)\n";
-        of << "G28 Z\n";
-        of << "M3 S" << left << setw(5) << driller->speed << " (Spindle on clockwise.)\n"
+              << drill_to_string(bit)
+              << "\""
+              << " S2\n"
+           << "M292      (Acknowledge blocking message.)\n"
+           << (nom6?"":"M6      (Tool change.)\n")
+           << "M0      (Temporary machine stop.)\n"
+           << "M3 S" << left << setw(5) << driller->speed << " (Spindle on clockwise.)\n"
            << "G0 Z" << driller->zsafe * cfactor << "\n"
            << "G04 P" << driller->spinup_time << "\n\n";
 
@@ -634,9 +635,10 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
           << (bMetricOutput ? " mm" : " inch")
           << "\""
           << " S2\n"
-       << "M292        (Acknowledge blocking message.)\n";
-    of << "G28 Z\n";
-    of << "M3 S" << left << setw(5) << target->speed << " (Spindle on clockwise.)\n"
+       << "M292        (Acknowledge blocking message.)\n"
+       << (nom6?"":"M6      (Tool change.)\n")
+       << "M0      (Temporary machine stop.)\n"
+       << "M3 S" << left << setw(5) << target->speed << " (Spindle on clockwise.)\n"
        << "G04 P" << target->spinup_time << "\n"
        << "G00 Z" << target->zsafe * cfactor << "\n\n";
 
