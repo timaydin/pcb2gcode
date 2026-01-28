@@ -317,6 +317,16 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
       }
     }
 
+    if (isolator) {
+      // don't need to map surface when cutting
+      of << "M557" << left << setprecision(2)
+        << " X" << isolator->autolevel_margin_x * cfactor << ":" << (board->get_width() - isolator->autolevel_margin_x) * cfactor
+        << " Y" << isolator->autolevel_margin_y * cfactor << ":" << (board->get_height() - isolator->autolevel_margin_y) * cfactor
+        << " S" << isolator->autolevel_stepsize * cfactor
+        << " ( Set probe area )\n";
+      of << "G29 S0\n";
+    }
+
     uniqueCodes main_sub_ocodes(200);
     for (size_t toolpaths_index = 0; toolpaths_index < all_toolpaths.size(); toolpaths_index++) {
       const auto& toolpaths = all_toolpaths[toolpaths_index].second;
@@ -358,16 +368,6 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
 
       of << "G0 X0 Y0\n"
          << "G28 Z\n";
-
-      if (isolator) {
-        // don't need to map surface when cutting
-        of << "M557" << left << setprecision(2)
-          << " X" << isolator->autolevel_margin_x * cfactor << ":" << (board->get_width() - isolator->autolevel_margin_x) * cfactor
-          << " Y" << isolator->autolevel_margin_y * cfactor << ":" << (board->get_height() - isolator->autolevel_margin_y) * cfactor
-          << " S" << isolator->autolevel_stepsize * cfactor
-          << " ( Set probe area )\n";
-        of << "G29 S0\n";
-      }
 
       of << (nom6?"":"M6      (Tool change.)\n")
          << "M3 S" << left << setw(5) << mill->speed << " ( Spindle on clockwise. )" << endl
